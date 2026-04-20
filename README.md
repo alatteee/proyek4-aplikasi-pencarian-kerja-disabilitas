@@ -1,2 +1,9 @@
-# proyek4-aplikasi-pencarian-kerja-disabilitas
-Aplikasi mobile pencarian kerja untuk penyandang disabilitas berbasis Flutter dengan dukungan aksesibilitas (WCAG) dan pendekatan offline-first.
+# Aplikasi Pencarian Kerja untuk Disabilitas
+
+## Deskripsi
+Aplikasi mobile untuk membantu penyandang disabilitas dalam mencari dan melamar pekerjaan secara inklusif, dengan dukungan aksesibilitas (WCAG) dan sistem offline-first.
+
+## Tim
+- Azkha Nazzala
+- Rahma Attaya
+- Zahra Aldila
