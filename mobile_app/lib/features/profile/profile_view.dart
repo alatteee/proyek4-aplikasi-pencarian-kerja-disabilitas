@@ -8,6 +8,7 @@ import 'help_view.dart';
 import 'about_view.dart';
 import '../saved_jobs/saved_jobs_page.dart';
 import 'profile_controller.dart';
+import 'dart:io';
 
 class ProfileView extends StatefulWidget {
   final Map<String, dynamic> currentUser;
@@ -48,120 +49,175 @@ class _ProfileViewState extends State<ProfileView> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
+    if (isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.primaryNavy),
+      );
+    }
+
+    return RefreshIndicator(
+    color: AppColors.primaryNavy,
+    onRefresh: _loadProfile,
+    child: SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
       child: Column(
         children: [
-           // User Profile Header
-           Row(
-             children: [
-               Container(
-                 width: 80,
-                 height: 80,
-                 decoration: BoxDecoration(
-                   color: AppColors.accentBlue.withOpacity(0.3),
-                   borderRadius: BorderRadius.circular(20),
-                 ),
-                 child: const Icon(Icons.person, size: 50, color: AppColors.primaryNavy),
-               ),
-               const SizedBox(width: 16),
-               Expanded(
-                 child: Column(
-                   crossAxisAlignment: CrossAxisAlignment.start,
-                   children: [
-                     Text(
+          // User Profile Header
+          Row(
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: AppColors.accentBlue.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: userDetails?['profile_photo'] != null &&
+                        userDetails!['profile_photo'].toString().isNotEmpty
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: Image.file(
+                          File(userDetails!['profile_photo']),
+                          fit: BoxFit.cover,
+                        ),
+                      )
+                    : const Icon(
+                        Icons.person,
+                        size: 50,
+                        color: AppColors.primaryNavy,
+                      ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
                       userDetails?['nama_lengkap'] ??
                           widget.currentUser['username'] ??
                           'User',
-                       style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.primaryNavy),
-                     ),
-                     const SizedBox(height: 2),
-                      Text(
-                        userDetails?['email'] ??
-                            widget.currentUser['email'] ??
-                            '-',
-                       style: const TextStyle(fontSize: 14, color: AppColors.textGray),
-                     ),
-                     const SizedBox(height: 14),
-                     SizedBox(
-                       height: 36,
-                       width: 120, // fixed width for button
-                       child: OutlinedButton(
-                         onPressed: () {
-                           Navigator.push(context, MaterialPageRoute(
-                             builder: (_) => ProfileDetailView(currentUser: widget.currentUser)
-                           ));
-                         },
-                         style: OutlinedButton.styleFrom(
-                           padding: EdgeInsets.zero,
-                           foregroundColor: AppColors.primaryNavy,
-                           side: const BorderSide(color: AppColors.primaryNavy),
-                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                         ),
-                         child: const Text('Lihat Profil', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                       ),
-                     ),
-                   ],
-                 ),
-               ),
-             ],
-           ),
-           
-           const SizedBox(height: 32),
-           
-           // List Menus
-           ProfileMenuItem(
-             icon: Icons.bookmark,
-             label: 'Lowongan Tersimpan',
-             onTap: () {
-               Navigator.push(
-                 context,
-                 MaterialPageRoute(
-                   builder: (_) => SavedJobsPage(currentUser: widget.currentUser),
-                 ),
-               );
-             },
-           ),
-           ProfileMenuItem(icon: Icons.accessibility_new, label: 'Pengaturan Aksesibilitas', onTap: () {}),
-           ProfileMenuItem(
-             icon: Icons.settings, 
-             label: 'Pengaturan Akun', 
-             onTap: () {
-               Navigator.push(context, MaterialPageRoute(
-                 builder: (_) => AccountSettingsView(currentUser: widget.currentUser)
-               ));
-             },
-           ),
-           ProfileMenuItem(
-             icon: Icons.help, 
-             label: 'Bantuan', 
-             onTap: () {
-               Navigator.push(context, MaterialPageRoute(
-                 builder: (_) => const HelpView()
-               ));
-             },
-           ),
-           ProfileMenuItem(
-             icon: Icons.info, 
-             label: 'Tentang Aplikasi', 
-             onTap: () {
-               Navigator.push(context, MaterialPageRoute(
-                 builder: (_) => const AboutView()
-               ));
-             },
-           ),
-           
-           // Logout Menu
-           ProfileMenuItem(
-             icon: Icons.logout,
-             label: 'Logout', 
-             onTap: () => _showLogoutDialog(context),
-           ),
-           
-           const SizedBox(height: 20),
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primaryNavy,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      userDetails?['email'] ??
+                          widget.currentUser['email'] ??
+                          '-',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textGray,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      height: 36,
+                      width: 120,
+                      child: OutlinedButton(
+                        onPressed: () async {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ProfileDetailView(
+                                currentUser: widget.currentUser,
+                              ),
+                            ),
+                          );
+
+                          if (result == true) {
+                            _loadProfile();
+                          }
+                        },
+                        style: OutlinedButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          foregroundColor: AppColors.primaryNavy,
+                          side: const BorderSide(color: AppColors.primaryNavy),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text(
+                          'Lihat Profil',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 32),
+
+          ProfileMenuItem(
+            icon: Icons.bookmark,
+            label: 'Lowongan Tersimpan',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => SavedJobsPage(currentUser: widget.currentUser),
+                ),
+              );
+            },
+          ),
+          ProfileMenuItem(
+            icon: Icons.accessibility_new,
+            label: 'Pengaturan Aksesibilitas',
+            onTap: () {},
+          ),
+          ProfileMenuItem(
+            icon: Icons.settings,
+            label: 'Pengaturan Akun',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      AccountSettingsView(currentUser: widget.currentUser),
+                ),
+              );
+            },
+          ),
+          ProfileMenuItem(
+            icon: Icons.help,
+            label: 'Bantuan',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const HelpView()),
+              );
+            },
+          ),
+          ProfileMenuItem(
+            icon: Icons.info,
+            label: 'Tentang Aplikasi',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AboutView()),
+              );
+            },
+          ),
+          ProfileMenuItem(
+            icon: Icons.logout,
+            label: 'Logout',
+            onTap: () => _showLogoutDialog(context),
+          ),
+
+          const SizedBox(height: 20),
         ],
       ),
-    );
+    ),
+  );
   }
 
   void _showLogoutDialog(BuildContext context) {

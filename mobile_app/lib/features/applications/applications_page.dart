@@ -35,8 +35,9 @@ class _ApplicationsPageState extends State<ApplicationsPage> {
   }
 
   Future<void> _loadApplications() async {
-    setState(() => _isLoading = true);
-
+    if (_applications.isEmpty) {
+      setState(() => _isLoading = true);
+    }
     final data = await MongoService.getUserApplications(userId: _currentUserId);
 
     if (!mounted) return;

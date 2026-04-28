@@ -4,6 +4,7 @@ import 'profile_controller.dart';
 import 'edit_profile_view.dart';
 import 'widgets/skill_chip.dart';
 import 'widgets/profile_info_field.dart';
+import 'dart:io';
 
 class ProfileDetailView extends StatefulWidget {
   final Map<String, dynamic> currentUser;
@@ -58,8 +59,7 @@ class _ProfileDetailViewState extends State<ProfileDetailView> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.primaryNavy),
-          onPressed: () => Navigator.pop(context),
-        ),
+          onPressed: () => Navigator.pop(context, true),        ),
         title: const Text(
           'Detail Profil',
           style: TextStyle(color: AppColors.primaryNavy, fontWeight: FontWeight.bold, fontSize: 20),
@@ -81,7 +81,20 @@ class _ProfileDetailViewState extends State<ProfileDetailView> {
                     color: AppColors.accentBlue.withOpacity(0.3),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Icon(Icons.person, size: 50, color: AppColors.primaryNavy),
+                  child: userDetails?['profile_photo'] != null &&
+                      userDetails!['profile_photo'].toString().isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: Image.file(
+                        File(userDetails!['profile_photo']),
+                        fit: BoxFit.cover,
+                      ),
+                    )
+                  : const Icon(
+                      Icons.person,
+                      size: 50,
+                      color: AppColors.primaryNavy,
+                    ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(

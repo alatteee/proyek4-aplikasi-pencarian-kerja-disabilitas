@@ -3,6 +3,8 @@ import '../../core/constants/app_colors.dart';
 import 'profile_controller.dart';
 import 'widgets/skill_chip.dart';
 import 'package:file_picker/file_picker.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 
 class EditProfileView extends StatefulWidget {
   final Map<String, dynamic> currentUser;
@@ -30,6 +32,7 @@ class _EditProfileViewState extends State<EditProfileView> {
   bool _isLoading = false;
   String? _cvFilePath;
   int? _cvFileSize;
+  String? _profilePhotoPath;
 
   static const int _maxCvSizeBytes = 10 * 1024 * 1024;
 
@@ -51,6 +54,7 @@ class _EditProfileViewState extends State<EditProfileView> {
     _emailController = TextEditingController(text: widget.userDetails?['email'] ?? widget.currentUser['email']);
     _phoneController = TextEditingController(text: widget.userDetails?['phone'] ?? widget.currentUser['phone']);
     _deskripsiController = TextEditingController(text: widget.userDetails?['deskripsi_disabilitas'] ?? '');
+    _profilePhotoPath = widget.userDetails?['profile_photo'];
     
     // Load dropdowns if they exist in options
     final jk = widget.userDetails?['jenis_kelamin'];
@@ -112,6 +116,21 @@ class _EditProfileViewState extends State<EditProfileView> {
     });
   }
 
+  Future<void> _pickProfilePhoto() async {
+    final picker = ImagePicker();
+
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
+
+    if (pickedFile == null) return;
+
+    setState(() {
+      _profilePhotoPath = pickedFile.path;
+    });
+  }
+
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -136,6 +155,7 @@ class _EditProfileViewState extends State<EditProfileView> {
       'cv_filename': _cvFileName,
       'cv_file_path': _cvFilePath,
       'cv_file_size': _cvFileSize,
+      'profile_photo': _profilePhotoPath,
     };
 
     final success = await ProfileController.createOrUpdateProfile(data);
@@ -174,6 +194,54 @@ class _EditProfileViewState extends State<EditProfileView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Center(
+                child: GestureDetector(
+                  onTap: _pickProfilePhoto,
+                  child: Stack(
+                    children: [
+                      Container(
+                        width: 96,
+                        height: 96,
+                        decoration: BoxDecoration(
+                          color: AppColors.accentBlue.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(24),
+                          image: _profilePhotoPath != null && _profilePhotoPath!.isNotEmpty
+                              ? DecorationImage(
+                                  image: FileImage(File(_profilePhotoPath!)),
+                                  fit: BoxFit.cover,
+                                )
+                              : null,
+                        ),
+                        child: _profilePhotoPath == null || _profilePhotoPath!.isEmpty
+                            ? const Icon(
+                                Icons.person,
+                                size: 56,
+                                color: AppColors.primaryNavy,
+                              )
+                            : null,
+                      ),
+                      Positioned(
+                        right: 0,
+                        bottom: 0,
+                        child: Container(
+                          width: 30,
+                          height: 30,
+                          decoration: const BoxDecoration(
+                            color: AppColors.primaryNavy,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.camera_alt,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
               _buildTextField('Nama Lengkap', _namaLengkapController, validator: (v) => v!.isEmpty ? 'Tidak boleh kosong' : null),
               _buildTextField('Email', _emailController, keyboardType: TextInputType.emailAddress, validator: (v) {
                 if (v == null || v.isEmpty) return 'Tidak boleh kosong';

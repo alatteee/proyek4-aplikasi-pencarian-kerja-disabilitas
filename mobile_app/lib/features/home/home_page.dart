@@ -63,8 +63,8 @@ class _HomePageState extends State<HomePage> {
     return MongoService.getMongoId(job['_id']);
   }
 
-  void fetchJobs() async {
-    setState(() {
+  Future<void> fetchJobs() async {
+      setState(() {
       isLoading = true;
     });
 
@@ -388,140 +388,145 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildBeranda(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Halo, ${widget.userData['username'] ?? 'User'}. ${_getGreeting()}!',
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 20),
-          Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey.shade300),
-            ),
-            child: TextField(
-              controller: _searchController,
-              onChanged: (value) {
-                searchQuery = value;
-                applyFilters();
-              },
-              decoration: const InputDecoration(
-                hintText: 'Cari Lowongan Pekerjaan...',
-                hintStyle: TextStyle(color: AppColors.textGray),
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    return RefreshIndicator(
+      color: AppColors.primaryNavy,
+      onRefresh: fetchJobs,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Halo, ${widget.userData['username'] ?? 'User'}. ${_getGreeting()}!',
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
               ),
             ),
-          ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      selectedCategory = 'Semua';
-                    });
-                    applyFilters();
-                  },
-                  child: _CategoryButton('Semua', selectedCategory == 'Semua'),
+            const SizedBox(height: 20),
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: TextField(
+                controller: _searchController,
+                onChanged: (value) {
+                  searchQuery = value;
+                  applyFilters();
+                },
+                decoration: const InputDecoration(
+                  hintText: 'Cari Lowongan Pekerjaan...',
+                  hintStyle: TextStyle(color: AppColors.textGray),
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      selectedCategory = 'Teknologi';
-                    });
-                    applyFilters();
-                  },
-                  child: _CategoryButton('Teknologi', selectedCategory == 'Teknologi'),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      selectedCategory = 'Marketing';
-                    });
-                    applyFilters();
-                  },
-                  child: _CategoryButton('Marketing', selectedCategory == 'Marketing'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      selectedCategory = 'Admin';
-                    });
-                    applyFilters();
-                  },
-                  child: _CategoryButton('Admin', selectedCategory == 'Admin'),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 32),
-          const Text(
-            'Lowongan Terbaru',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
             ),
-          ),
-          const SizedBox(height: 16),
-          if (isLoading)
-            const Center(child: CircularProgressIndicator())
-          else if (filteredJobs.isEmpty)
-            const Center(child: Text('Belum ada lowongan'))
-          else
-            ...filteredJobs.map(
-              (job) {
-                final jobMap = Map<String, dynamic>.from(job);
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: _JobCard(
-                    title: jobMap['title'] ?? '-',
-                    company: jobMap['company_name'] ?? '-',
-                    location: jobMap['location'] ?? '-',
-                    type: jobMap['job_type'] ?? '-',
-                    desc: jobMap['description'] ?? '-',
-                    isSaved: savedJobIds.contains(_jobIdOf(jobMap)),
-                    onSave: () => toggleSaveJob(jobMap),
-                    onDetail: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => JobDetailPage(
-                            job: jobMap,
-                            currentUser: widget.userData,
-                          ),
-                        ),
-                      );
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        selectedCategory = 'Semua';
+                      });
+                      applyFilters();
                     },
+                    child: _CategoryButton('Semua', selectedCategory == 'Semua'),
                   ),
-                );
-              },
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        selectedCategory = 'Teknologi';
+                      });
+                      applyFilters();
+                    },
+                    child: _CategoryButton('Teknologi', selectedCategory == 'Teknologi'),
+                  ),
+                ),
+              ],
             ),
-          const SizedBox(height: 20),
-        ],
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        selectedCategory = 'Marketing';
+                      });
+                      applyFilters();
+                    },
+                    child: _CategoryButton('Marketing', selectedCategory == 'Marketing'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        selectedCategory = 'Admin';
+                      });
+                      applyFilters();
+                    },
+                    child: _CategoryButton('Admin', selectedCategory == 'Admin'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 32),
+            const Text(
+              'Lowongan Terbaru',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (isLoading)
+              const Center(child: CircularProgressIndicator())
+            else if (filteredJobs.isEmpty)
+              const Center(child: Text('Belum ada lowongan'))
+            else
+              ...filteredJobs.map(
+                (job) {
+                  final jobMap = Map<String, dynamic>.from(job);
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: _JobCard(
+                      title: jobMap['title'] ?? '-',
+                      company: jobMap['company_name'] ?? '-',
+                      location: jobMap['location'] ?? '-',
+                      type: jobMap['job_type'] ?? '-',
+                      desc: jobMap['description'] ?? '-',
+                      isSaved: savedJobIds.contains(_jobIdOf(jobMap)),
+                      onSave: () => toggleSaveJob(jobMap),
+                      onDetail: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => JobDetailPage(
+                              job: jobMap,
+                              currentUser: widget.userData,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
+            const SizedBox(height: 20),
+          ],
+        ),
       ),
     );
   }
