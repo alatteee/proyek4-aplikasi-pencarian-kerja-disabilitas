@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lottie/lottie.dart'; // import library lottie
+// import library lottie
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/custom_text_field.dart';
 import 'sign_up_view.dart';

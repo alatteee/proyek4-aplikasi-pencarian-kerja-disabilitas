@@ -25,6 +25,7 @@ class _EditProfileViewState extends State<EditProfileView> {
   String? _jenisKelamin;
   String? _jenisDisabilitas;
   List<String> _skills = [];
+  String? _cvFileName;
   bool _isLoading = false;
 
   final List<String> _kelaminOptions = ['Laki-laki', 'Perempuan'];
@@ -53,6 +54,8 @@ class _EditProfileViewState extends State<EditProfileView> {
     final jd = widget.userDetails?['jenis_disabilitas'];
     if (_disabilitasOptions.contains(jd)) _jenisDisabilitas = jd;
     
+    _cvFileName = widget.userDetails?['cv_filename'];
+    
     final skillsData = widget.userDetails?['skills'];
     if (skillsData != null && skillsData is List) {
       _skills = skillsData.map((e) => e.toString()).toList();
@@ -79,6 +82,14 @@ class _EditProfileViewState extends State<EditProfileView> {
     _skillController.clear();
   }
 
+  void _pickCV() {
+    // Fungsi ini dinonaktifkan sementara untuk menghindari error kompilasi
+    // Kita buat simulasi tampilan saja dulu
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Fitur pilih file akan segera aktif')),
+    );
+  }
+
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -100,6 +111,7 @@ class _EditProfileViewState extends State<EditProfileView> {
       'jenis_disabilitas': _jenisDisabilitas,
       'deskripsi_disabilitas': _deskripsiController.text.trim(),
       'skills': _skills,
+      'cv_filename': _cvFileName,
     };
 
     final success = await ProfileController.createOrUpdateProfile(data);
@@ -196,6 +208,47 @@ class _EditProfileViewState extends State<EditProfileView> {
                 )).toList(),
               ),
 
+              const SizedBox(height: 24),
+              const Text('CV', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: _pickCV,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFF),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: AppColors.primaryNavy.withOpacity(0.2),
+                      style: BorderStyle.solid, // Note: standard Flutter doesn't support dashed natively without custom painter, using solid with low opacity for similar feel
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      const Icon(Icons.cloud_upload_outlined, size: 32, color: AppColors.primaryNavy),
+                      const SizedBox(height: 12),
+                      Text(
+                        _cvFileName ?? 'Upload / Ganti CV',
+                        style: const TextStyle(
+                          color: AppColors.primaryNavy,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                      if (_cvFileName != null)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 4.0),
+                          child: Text(
+                            'Klik untuk mengganti file',
+                            style: TextStyle(color: Colors.grey, fontSize: 11),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+
               const SizedBox(height: 40),
               SizedBox(
                 width: double.infinity,
@@ -277,7 +330,7 @@ class _EditProfileViewState extends State<EditProfileView> {
               ],
             ),
             child: DropdownButtonFormField<String>(
-              value: value,
+              initialValue: value,
               isExpanded: true, // Memastikan text tidak terpotong
               items: options.map((o) => DropdownMenuItem(
                 value: o, 
