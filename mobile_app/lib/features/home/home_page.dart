@@ -2,6 +2,7 @@
 import '../../core/constants/app_colors.dart';
 import '../auth/login_view.dart';
 import '../../services/mongo_service.dart';
+import '../job_detail/job_detail_page.dart';
 
 class HomePage extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -351,6 +352,14 @@ class _HomePageState extends State<HomePage> {
               type: job['job_type'] ?? '-',
               desc: job['description'] ?? '-',
               isSaved: false,
+              onDetail: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => JobDetailPage(job: job),
+                  ),
+                );
+              },
             ),
           )),
           const SizedBox(height: 20),
@@ -528,6 +537,7 @@ class _JobCard extends StatelessWidget {
   final String type;
   final String desc;
   final bool isSaved;
+  final VoidCallback? onDetail;
 
   const _JobCard({
     required this.title,
@@ -536,6 +546,7 @@ class _JobCard extends StatelessWidget {
     required this.type,
     required this.desc,
     required this.isSaved,
+    this.onDetail,
   });
 
   @override
@@ -575,7 +586,7 @@ class _JobCard extends StatelessWidget {
             children: [
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () {},
+                  onPressed: onDetail,
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     foregroundColor: Colors.black87,
