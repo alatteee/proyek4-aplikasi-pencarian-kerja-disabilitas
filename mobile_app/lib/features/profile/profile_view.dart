@@ -6,6 +6,7 @@ import 'profile_detail_view.dart';
 import 'account_settings_view.dart';
 import 'help_view.dart';
 import 'about_view.dart';
+import '../saved_jobs/saved_jobs_page.dart';
 
 class ProfileView extends StatelessWidget {
   final Map<String, dynamic> currentUser;
@@ -72,7 +73,18 @@ class ProfileView extends StatelessWidget {
            const SizedBox(height: 32),
            
            // List Menus
-           ProfileMenuItem(icon: Icons.bookmark, label: 'Lowongan Tersimpan', onTap: () {}),
+           ProfileMenuItem(
+             icon: Icons.bookmark,
+             label: 'Lowongan Tersimpan',
+             onTap: () {
+               Navigator.push(
+                 context,
+                 MaterialPageRoute(
+                   builder: (_) => SavedJobsPage(currentUser: currentUser),
+                 ),
+               );
+             },
+           ),
            ProfileMenuItem(icon: Icons.accessibility_new, label: 'Pengaturan Aksesibilitas', onTap: () {}),
            ProfileMenuItem(
              icon: Icons.settings, 

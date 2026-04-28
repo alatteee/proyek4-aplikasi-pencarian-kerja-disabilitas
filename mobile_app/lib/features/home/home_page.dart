@@ -5,6 +5,7 @@ import '../../services/mongo_service.dart';
 import '../job_detail/job_detail_page.dart';
 import '../saved_jobs/saved_jobs_page.dart';
 import '../applications/applications_page.dart';
+import '../profile/profile_view.dart';
 
 class HomePage extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -526,115 +527,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildProfil(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: AppColors.accentBlue.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Icon(
-                  Icons.person,
-                  size: 50,
-                  color: AppColors.primaryNavy,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.userData['username'] ?? 'User',
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primaryNavy,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      widget.userData['email'] ?? 'email@domain.com',
-                      style: const TextStyle(fontSize: 14, color: AppColors.textGray),
-                    ),
-                    const SizedBox(height: 14),
-                    SizedBox(
-                      height: 36,
-                      width: 120,
-                      child: OutlinedButton(
-                        onPressed: () {},
-                        style: OutlinedButton.styleFrom(
-                          padding: EdgeInsets.zero,
-                          foregroundColor: AppColors.primaryNavy,
-                          side: const BorderSide(color: AppColors.primaryNavy),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: const Text(
-                          'Lihat Profil',
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 32),
-          _ProfileMenuCard(
-            icon: Icons.bookmark,
-            label: 'Lowongan Tersimpan',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => SavedJobsPage(currentUser: widget.userData),
-                ),
-              ).then((_) => fetchJobs());
-            },
-          ),
-          _ProfileMenuCard(
-            icon: Icons.accessibility_new,
-            label: 'Pengaturan Aksesibilitas',
-            onTap: () {},
-          ),
-          _ProfileMenuCard(
-            icon: Icons.settings,
-            label: 'Pengaturan Akun',
-            onTap: () {},
-          ),
-          _ProfileMenuCard(
-            icon: Icons.help,
-            label: 'Bantuan',
-            onTap: () {},
-          ),
-          _ProfileMenuCard(
-            icon: Icons.info,
-            label: 'Tentang Aplikasi',
-            onTap: () {},
-          ),
-          _ProfileMenuCard(
-            icon: Icons.logout,
-            label: 'Logout',
-            onTap: () {
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const LoginView()),
-                (route) => false,
-              );
-            },
-          ),
-          const SizedBox(height: 20),
-        ],
-      ),
-    );
+    return ProfileView(currentUser: widget.userData);
   }
 }
 
