@@ -3,27 +3,31 @@ import '../../core/constants/app_colors.dart';
 import '../auth/login_view.dart';
 import '../../services/mongo_service.dart';
 import '../job_detail/job_detail_page.dart';
+import '../saved_jobs/saved_jobs_page.dart';
 
 class HomePage extends StatefulWidget {
   final Map<String, dynamic> userData;
   final bool showSuccessDialog;
 
-  const HomePage({super.key, required this.userData, this.showSuccessDialog = false});
+  const HomePage({
+    super.key,
+    required this.userData,
+    this.showSuccessDialog = false,
+  });
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
-
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
   List jobs = [];
   List filteredJobs = [];
+  Set<String> savedJobIds = {};
   bool isLoading = true;
   String selectedCategory = 'Semua';
   String searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
-
 
   @override
   void initState() {
@@ -42,31 +46,148 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
+  String get _currentUserId {
+    return widget.userData['_id']?.toString() ??
+        widget.userData['id']?.toString() ??
+        widget.userData['user_id']?.toString() ??
+        widget.userData['email']?.toString() ??
+        '';
+  }
+
+  String _jobIdOf(Map<String, dynamic> job) {
+    return MongoService.getMongoId(job['_id']);
+  }
+
   void fetchJobs() async {
     setState(() {
       isLoading = true;
     });
+
     final data = await MongoService.getJobVacancies();
+    final savedIds = await MongoService.getSavedJobIds(userId: _currentUserId);
+
+    if (!mounted) return;
+
     setState(() {
       jobs = data;
+      savedJobIds = savedIds;
       isLoading = false;
     });
     applyFilters();
   }
 
+  void _showCustomSnackBar({
+    required String message,
+    required IconData icon,
+    Color backgroundColor = AppColors.primaryNavy,
+  }) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: backgroundColor,
+        elevation: 8,
+        duration: const Duration(seconds: 2),
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
+        content: Row(
+          children: [
+            Icon(icon, color: Colors.white, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> toggleSaveJob(Map<String, dynamic> job) async {
+    final jobId = _jobIdOf(job);
+
+    if (_currentUserId.isEmpty || jobId.isEmpty) {
+      _showCustomSnackBar(
+        message: 'Data pengguna atau lowongan tidak valid',
+        icon: Icons.error_outline,
+        backgroundColor: Colors.grey.shade800,
+      );
+      return;
+    }
+
+    final alreadySaved = savedJobIds.contains(jobId);
+    final success = alreadySaved
+        ? await MongoService.unsaveJob(userId: _currentUserId, jobId: jobId)
+        : await MongoService.saveJob(userId: _currentUserId, jobId: jobId);
+
+    if (!mounted) return;
+
+    if (success) {
+      setState(() {
+        if (alreadySaved) {
+          savedJobIds.remove(jobId);
+        } else {
+          savedJobIds.add(jobId);
+        }
+      });
+
+      _showCustomSnackBar(
+        message: alreadySaved
+            ? 'Lowongan dihapus dari tersimpan'
+            : 'Lowongan berhasil disimpan',
+        icon: alreadySaved ? Icons.bookmark_border : Icons.bookmark,
+        backgroundColor: alreadySaved ? Colors.grey.shade800 : AppColors.primaryNavy,
+      );
+    } else {
+      _showCustomSnackBar(
+        message: alreadySaved
+            ? 'Gagal menghapus lowongan tersimpan'
+            : 'Gagal menyimpan lowongan',
+        icon: Icons.error_outline,
+        backgroundColor: Colors.grey.shade800,
+      );
+    }
+  }
+
   void applyFilters() {
     List result = jobs;
+
     if (selectedCategory != 'Semua') {
-      result = result.where((job) =>
-        (job['category'] ?? '').toString().toLowerCase() == selectedCategory.toLowerCase()
-      ).toList();
+      result = result
+          .where(
+            (job) =>
+                (job['category'] ?? '').toString().toLowerCase() ==
+                selectedCategory.toLowerCase(),
+          )
+          .toList();
     }
+
     if (searchQuery.isNotEmpty) {
-      result = result.where((job) =>
-        (job['title'] ?? '').toString().toLowerCase().contains(searchQuery.toLowerCase()) ||
-        (job['company_name'] ?? '').toString().toLowerCase().contains(searchQuery.toLowerCase())
-      ).toList();
+      result = result
+          .where(
+            (job) =>
+                (job['title'] ?? '')
+                    .toString()
+                    .toLowerCase()
+                    .contains(searchQuery.toLowerCase()) ||
+                (job['company_name'] ?? '')
+                    .toString()
+                    .toLowerCase()
+                    .contains(searchQuery.toLowerCase()),
+          )
+          .toList();
     }
+
     setState(() {
       filteredJobs = result;
     });
@@ -134,7 +255,14 @@ class _HomePageState extends State<HomePage> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                   ),
-                  child: const Text('Got It', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  child: const Text(
+                    'Got It',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
@@ -163,7 +291,16 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final List<Widget> pages = [
       _buildBeranda(context),
-      const Center(child: Text('Halaman Lamaran', style: TextStyle(fontSize: 20, color: AppColors.primaryNavy, fontWeight: FontWeight.bold))),
+      const Center(
+        child: Text(
+          'Halaman Lamaran',
+          style: TextStyle(
+            fontSize: 20,
+            color: AppColors.primaryNavy,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
       _buildProfil(context),
     ];
 
@@ -223,7 +360,11 @@ class _HomePageState extends State<HomePage> {
       actions: [
         IconButton(
           onPressed: () {},
-          icon: const Icon(Icons.notifications, color: AppColors.primaryNavy, size: 30),
+          icon: const Icon(
+            Icons.notifications,
+            color: AppColors.primaryNavy,
+            size: 30,
+          ),
         ),
         const SizedBox(width: 8),
       ],
@@ -236,17 +377,20 @@ class _HomePageState extends State<HomePage> {
       elevation: 0,
       leading: IconButton(
         icon: const Icon(Icons.arrow_back, color: AppColors.primaryNavy),
-        onPressed: () => setState(() => _selectedIndex = 0), // Kembali ke home (Beranda)
+        onPressed: () => setState(() => _selectedIndex = 0),
       ),
       title: Text(
         _selectedIndex == 1 ? 'Lamaran Saya' : 'Profil Saya',
-        style: const TextStyle(color: AppColors.primaryNavy, fontWeight: FontWeight.bold, fontSize: 20),
+        style: const TextStyle(
+          color: AppColors.primaryNavy,
+          fontWeight: FontWeight.bold,
+          fontSize: 20,
+        ),
       ),
       centerTitle: false,
     );
   }
 
-  // --- BERANDA WIDGET ---
   Widget _buildBeranda(BuildContext context) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20.0),
@@ -255,7 +399,11 @@ class _HomePageState extends State<HomePage> {
         children: [
           Text(
             'Halo, ${widget.userData['username'] ?? 'User'}. ${_getGreeting()}!',
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
           ),
           const SizedBox(height: 20),
           Container(
@@ -336,114 +484,156 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 32),
           const Text(
             'Lowongan Terbaru',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
           ),
           const SizedBox(height: 16),
           if (isLoading)
             const Center(child: CircularProgressIndicator())
           else if (filteredJobs.isEmpty)
             const Center(child: Text('Belum ada lowongan'))
-          else ...filteredJobs.map((job) => Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: _JobCard(
-              title: job['title'] ?? '-',
-              company: job['company_name'] ?? '-',
-              location: job['location'] ?? '-',
-              type: job['job_type'] ?? '-',
-              desc: job['description'] ?? '-',
-              isSaved: false,
-              onDetail: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => JobDetailPage(job: job),
+          else
+            ...filteredJobs.map(
+              (job) {
+                final jobMap = Map<String, dynamic>.from(job);
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: _JobCard(
+                    title: jobMap['title'] ?? '-',
+                    company: jobMap['company_name'] ?? '-',
+                    location: jobMap['location'] ?? '-',
+                    type: jobMap['job_type'] ?? '-',
+                    desc: jobMap['description'] ?? '-',
+                    isSaved: savedJobIds.contains(_jobIdOf(jobMap)),
+                    onSave: () => toggleSaveJob(jobMap),
+                    onDetail: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => JobDetailPage(job: jobMap),
+                        ),
+                      );
+                    },
                   ),
                 );
               },
             ),
-          )),
           const SizedBox(height: 20),
         ],
       ),
     );
   }
 
-  // --- PROFIL WIDGET ---
   Widget _buildProfil(BuildContext context) {
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
       child: Column(
         children: [
-           // User Profile Header
-           Row(
-             children: [
-               Container(
-                 width: 80,
-                 height: 80,
-                 decoration: BoxDecoration(
-                   color: AppColors.accentBlue.withOpacity(0.3),
-                   borderRadius: BorderRadius.circular(20),
-                 ),
-                 child: const Icon(Icons.person, size: 50, color: AppColors.primaryNavy),
-               ),
-               const SizedBox(width: 16),
-               Expanded(
-                 child: Column(
-                   crossAxisAlignment: CrossAxisAlignment.start,
-                   children: [
-                     Text(
-                       widget.userData['username'] ?? 'User',
-                       style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.primaryNavy),
-                     ),
-                     const SizedBox(height: 2),
-                     Text(
-                       widget.userData['email'] ?? 'email@domain.com',
-                       style: const TextStyle(fontSize: 14, color: AppColors.textGray),
-                     ),
-                     const SizedBox(height: 14),
-                     SizedBox(
-                       height: 36,
-                       width: 120, // fixed width for button
-                       child: OutlinedButton(
-                         onPressed: () {},
-                         style: OutlinedButton.styleFrom(
-                           padding: EdgeInsets.zero,
-                           foregroundColor: AppColors.primaryNavy,
-                           side: const BorderSide(color: AppColors.primaryNavy),
-                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                         ),
-                         child: const Text('Lihat Profil', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                       ),
-                     ),
-                   ],
-                 ),
-               ),
-             ],
-           ),
-           
-           const SizedBox(height: 32),
-           
-           // List Menus
-           _ProfileMenuCard(icon: Icons.bookmark, label: 'Lowongan Tersimpan', onTap: () {}),
-           _ProfileMenuCard(icon: Icons.accessibility_new, label: 'Pengaturan Aksesibilitas', onTap: () {}),
-           _ProfileMenuCard(icon: Icons.settings, label: 'Pengaturan Akun', onTap: () {}),
-           _ProfileMenuCard(icon: Icons.help, label: 'Bantuan', onTap: () {}),
-           _ProfileMenuCard(icon: Icons.info, label: 'Tentang Aplikasi', onTap: () {}),
-           
-           // Logout Menu
-           _ProfileMenuCard(
-             icon: Icons.logout,
-             label: 'Logout', 
-             onTap: () {
-                // Logout action - clear route and move to login
-                Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (_) => const LoginView()),
-                  (route) => false,
-                );
-             },
-           ),
-           
-           const SizedBox(height: 20),
+          Row(
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: AppColors.accentBlue.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Icon(
+                  Icons.person,
+                  size: 50,
+                  color: AppColors.primaryNavy,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.userData['username'] ?? 'User',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primaryNavy,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      widget.userData['email'] ?? 'email@domain.com',
+                      style: const TextStyle(fontSize: 14, color: AppColors.textGray),
+                    ),
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      height: 36,
+                      width: 120,
+                      child: OutlinedButton(
+                        onPressed: () {},
+                        style: OutlinedButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          foregroundColor: AppColors.primaryNavy,
+                          side: const BorderSide(color: AppColors.primaryNavy),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text(
+                          'Lihat Profil',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 32),
+          _ProfileMenuCard(
+            icon: Icons.bookmark,
+            label: 'Lowongan Tersimpan',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => SavedJobsPage(currentUser: widget.userData),
+                ),
+              ).then((_) => fetchJobs());
+            },
+          ),
+          _ProfileMenuCard(
+            icon: Icons.accessibility_new,
+            label: 'Pengaturan Aksesibilitas',
+            onTap: () {},
+          ),
+          _ProfileMenuCard(
+            icon: Icons.settings,
+            label: 'Pengaturan Akun',
+            onTap: () {},
+          ),
+          _ProfileMenuCard(
+            icon: Icons.help,
+            label: 'Bantuan',
+            onTap: () {},
+          ),
+          _ProfileMenuCard(
+            icon: Icons.info,
+            label: 'Tentang Aplikasi',
+            onTap: () {},
+          ),
+          _ProfileMenuCard(
+            icon: Icons.logout,
+            label: 'Logout',
+            onTap: () {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const LoginView()),
+                (route) => false,
+              );
+            },
+          ),
+          const SizedBox(height: 20),
         ],
       ),
     );
@@ -474,7 +664,7 @@ class _ProfileMenuCard extends StatelessWidget {
             color: Colors.black12,
             blurRadius: 4,
             offset: Offset(0, 2),
-            spreadRadius: 0
+            spreadRadius: 0,
           ),
         ],
       ),
@@ -506,10 +696,10 @@ class _ProfileMenuCard extends StatelessWidget {
   }
 }
 
-
 class _CategoryButton extends StatelessWidget {
   final String title;
   final bool isSelected;
+
   const _CategoryButton(this.title, this.isSelected);
 
   @override
@@ -519,12 +709,17 @@ class _CategoryButton extends StatelessWidget {
       decoration: BoxDecoration(
         color: isSelected ? AppColors.primaryNavy : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: isSelected ? AppColors.primaryNavy : Colors.grey.shade400,),
+        border: Border.all(
+          color: isSelected ? AppColors.primaryNavy : Colors.grey.shade400,
+        ),
       ),
       alignment: Alignment.center,
       child: Text(
         title,
-        style: TextStyle(color: isSelected ? Colors.white : Colors.black87, fontWeight: FontWeight.w600),
+        style: TextStyle(
+          color: isSelected ? Colors.white : Colors.black87,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -538,6 +733,7 @@ class _JobCard extends StatelessWidget {
   final String desc;
   final bool isSaved;
   final VoidCallback? onDetail;
+  final VoidCallback? onSave;
 
   const _JobCard({
     required this.title,
@@ -547,6 +743,7 @@ class _JobCard extends StatelessWidget {
     required this.desc,
     required this.isSaved,
     this.onDetail,
+    this.onSave,
   });
 
   @override
@@ -564,23 +761,46 @@ class _JobCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
           const SizedBox(height: 4),
-          Text(company, style: const TextStyle(color: AppColors.textGray, fontSize: 14)),
+          Text(
+            company,
+            style: const TextStyle(color: AppColors.textGray, fontSize: 14),
+          ),
           const SizedBox(height: 12),
           Row(
             children: [
               const Icon(Icons.location_on, size: 16, color: AppColors.textGray),
               const SizedBox(width: 4),
-              Text(location, style: const TextStyle(color: AppColors.textGray, fontSize: 13)),
+              Text(
+                location,
+                style: const TextStyle(color: AppColors.textGray, fontSize: 13),
+              ),
               const SizedBox(width: 16),
               const Icon(Icons.work, size: 16, color: AppColors.textGray),
               const SizedBox(width: 4),
-              Text(type, style: const TextStyle(color: AppColors.textGray, fontSize: 13)),
+              Text(
+                type,
+                style: const TextStyle(color: AppColors.textGray, fontSize: 13),
+              ),
             ],
           ),
           const SizedBox(height: 16),
-          Text(desc, style: const TextStyle(color: AppColors.textGray, fontSize: 12, height: 1.4)),
+          Text(
+            desc,
+            style: const TextStyle(
+              color: AppColors.textGray,
+              fontSize: 12,
+              height: 1.4,
+            ),
+          ),
           const SizedBox(height: 20),
           Row(
             children: [
@@ -591,25 +811,30 @@ class _JobCard extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     foregroundColor: Colors.black87,
                     side: const BorderSide(color: Colors.black87),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
-                  child: const Text('Lihat Detail', style: TextStyle(fontWeight: FontWeight.w600)),
+                  child: const Text(
+                    'Lihat Detail',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () {},
+                  onPressed: onSave,
                   icon: Icon(
-                    isSaved ? Icons.bookmark : Icons.bookmark_border, 
-                    size: 16, 
-                    color: isSaved ? Colors.white : Colors.black87
+                    isSaved ? Icons.bookmark : Icons.bookmark_border,
+                    size: 16,
+                    color: isSaved ? Colors.white : Colors.black87,
                   ),
                   label: Flexible(
                     child: Text(
                       isSaved ? 'Lowongan Tersimpan' : 'Simpan Lowongan',
                       style: TextStyle(
-                        fontSize: 11, 
+                        fontSize: 11,
                         fontWeight: FontWeight.w600,
                         color: isSaved ? Colors.white : Colors.black87,
                       ),
@@ -623,7 +848,9 @@ class _JobCard extends StatelessWidget {
                     backgroundColor: isSaved ? AppColors.primaryNavy : Colors.transparent,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
-                      side: BorderSide(color: isSaved ? AppColors.primaryNavy : Colors.black87),
+                      side: BorderSide(
+                        color: isSaved ? AppColors.primaryNavy : Colors.black87,
+                      ),
                     ),
                   ),
                 ),
