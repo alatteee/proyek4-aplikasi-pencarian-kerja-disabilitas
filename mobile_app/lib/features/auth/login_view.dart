@@ -41,68 +41,9 @@ class _LoginViewState extends State<LoginView> {
     if (user != null) {
       if (!mounted) return;
       
-      // Tampilkan bottom sheet dgn animasi lottie
-      showModalBottomSheet(
-        context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.white,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(40),
-            topRight: Radius.circular(40),
-          ),
-        ),
-        builder: (BuildContext ctx) {
-          return Container(
-            height: 440,
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const SizedBox(height: 24),
-                // Render animasi Checkmark lottie online, fallback pakai Icon hijau jika internet error
-                Lottie.network(
-                  'https://lottie.host/9f50e82c-0e78-4333-bcd2-a63be3464e83/46H1HkQf3b.json',
-                  width: 150,
-                  height: 150,
-                  repeat: false,
-                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.check_circle, color: Colors.green, size: 100),
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'Login Berhasil !',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primaryNavy,
-                  ),
-                ),
-                const Spacer(),
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(ctx); // tutup popup lottie
-                      // Pindahkan ke Home Page
-                      Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(builder: (_) => HomePage(userData: user)),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryNavy,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                    child: const Text('Got It', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                  ),
-                ),
-                const SizedBox(height: 20),
-              ],
-            ),
-          );
-        },
+      // Langsung pindah ke Home Page dan picu animasi/bottomsheet di sana (HomePage mengatur animasinya)
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => HomePage(userData: user, showSuccessDialog: true)),
       );
     } else {
       if (!mounted) return;
