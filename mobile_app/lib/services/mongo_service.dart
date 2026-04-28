@@ -5,6 +5,15 @@ class MongoService {
   static late Db db;
   static late DbCollection users;
 
+
+
+  // Ambil data lowongan kerja
+  static Future<List<Map<String, dynamic>>> getJobVacancies() async {
+    final collection = db.collection('job_vacancies');
+    final jobs = await collection.find({'status': 'active'}).toList();
+    return jobs.cast<Map<String, dynamic>>();
+  }
+
   static Future<void> connect() async {
     final uri = dotenv.env['MONGODB_URI'];
 

@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../auth/login_view.dart';
+import '../../services/mongo_service.dart';
 
 class HomePage extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -12,8 +13,16 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
+
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
+  List jobs = [];
+  List filteredJobs = [];
+  bool isLoading = true;
+  String selectedCategory = 'Semua';
+  String searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+
 
   @override
   void initState() {
@@ -23,6 +32,43 @@ class _HomePageState extends State<HomePage> {
         _showSuccessBottomSheet();
       });
     }
+    fetchJobs();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void fetchJobs() async {
+    setState(() {
+      isLoading = true;
+    });
+    final data = await MongoService.getJobVacancies();
+    setState(() {
+      jobs = data;
+      isLoading = false;
+    });
+    applyFilters();
+  }
+
+  void applyFilters() {
+    List result = jobs;
+    if (selectedCategory != 'Semua') {
+      result = result.where((job) =>
+        (job['category'] ?? '').toString().toLowerCase() == selectedCategory.toLowerCase()
+      ).toList();
+    }
+    if (searchQuery.isNotEmpty) {
+      result = result.where((job) =>
+        (job['title'] ?? '').toString().toLowerCase().contains(searchQuery.toLowerCase()) ||
+        (job['company_name'] ?? '').toString().toLowerCase().contains(searchQuery.toLowerCase())
+      ).toList();
+    }
+    setState(() {
+      filteredJobs = result;
+    });
   }
 
   void _showSuccessBottomSheet() {
@@ -216,8 +262,13 @@ class _HomePageState extends State<HomePage> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.grey.shade300),
             ),
-            child: const TextField(
-              decoration: InputDecoration(
+            child: TextField(
+              controller: _searchController,
+              onChanged: (value) {
+                searchQuery = value;
+                applyFilters();
+              },
+              decoration: const InputDecoration(
                 hintText: 'Cari Lowongan Pekerjaan...',
                 hintStyle: TextStyle(color: AppColors.textGray),
                 border: InputBorder.none,
@@ -227,18 +278,58 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: 24),
           Row(
-            children: const [
-               Expanded(child: _CategoryButton('Semua', true)),
-               SizedBox(width: 12),
-               Expanded(child: _CategoryButton('Teknologi', false)),
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      selectedCategory = 'Semua';
+                    });
+                    applyFilters();
+                  },
+                  child: _CategoryButton('Semua', selectedCategory == 'Semua'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      selectedCategory = 'Teknologi';
+                    });
+                    applyFilters();
+                  },
+                  child: _CategoryButton('Teknologi', selectedCategory == 'Teknologi'),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
           Row(
-            children: const [
-               Expanded(child: _CategoryButton('Marketing', false)),
-               SizedBox(width: 12),
-               Expanded(child: _CategoryButton('Admin', false)),
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      selectedCategory = 'Marketing';
+                    });
+                    applyFilters();
+                  },
+                  child: _CategoryButton('Marketing', selectedCategory == 'Marketing'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      selectedCategory = 'Admin';
+                    });
+                    applyFilters();
+                  },
+                  child: _CategoryButton('Admin', selectedCategory == 'Admin'),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 32),
@@ -247,23 +338,21 @@ class _HomePageState extends State<HomePage> {
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
           ),
           const SizedBox(height: 16),
-          const _JobCard(
-            title: 'Customer Service',
-            company: 'PT Maju Bersama',
-            location: 'Bandung',
-            type: 'Full Time',
-            desc: 'Melayani pelanggan melalui telepon, chat, atau email serta memberikan solusi terbaik untuk setiap kebutuhan.',
-            isSaved: true,
-          ),
-          const SizedBox(height: 16),
-          const _JobCard(
-            title: 'Content Writer',
-            company: 'PT Sejahtera Jaya',
-            location: 'Bandung',
-            type: 'Part Time',
-            desc: 'Membuat dan mengembangkan konten tulisan untuk media digital seperti artikel, website, dan sosial media.',
-            isSaved: false,
-          ),
+          if (isLoading)
+            const Center(child: CircularProgressIndicator())
+          else if (filteredJobs.isEmpty)
+            const Center(child: Text('Belum ada lowongan'))
+          else ...filteredJobs.map((job) => Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: _JobCard(
+              title: job['title'] ?? '-',
+              company: job['company_name'] ?? '-',
+              location: job['location'] ?? '-',
+              type: job['job_type'] ?? '-',
+              desc: job['description'] ?? '-',
+              isSaved: false,
+            ),
+          )),
           const SizedBox(height: 20),
         ],
       ),
