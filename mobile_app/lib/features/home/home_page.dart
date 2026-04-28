@@ -4,15 +4,18 @@ import '../auth/login_view.dart';
 import '../../services/mongo_service.dart';
 import '../job_detail/job_detail_page.dart';
 import '../saved_jobs/saved_jobs_page.dart';
+import '../applications/applications_page.dart';
 
 class HomePage extends StatefulWidget {
   final Map<String, dynamic> userData;
   final bool showSuccessDialog;
+  final int initialIndex;
 
   const HomePage({
     super.key,
     required this.userData,
     this.showSuccessDialog = false,
+    this.initialIndex = 0,
   });
 
   @override
@@ -20,7 +23,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  int _selectedIndex = 0;
+  late int _selectedIndex;
   List jobs = [];
   List filteredJobs = [];
   Set<String> savedJobIds = {};
@@ -32,6 +35,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+    _selectedIndex = widget.initialIndex.clamp(0, 2).toInt();
     if (widget.showSuccessDialog) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _showSuccessBottomSheet();
@@ -291,16 +295,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final List<Widget> pages = [
       _buildBeranda(context),
-      const Center(
-        child: Text(
-          'Halaman Lamaran',
-          style: TextStyle(
-            fontSize: 20,
-            color: AppColors.primaryNavy,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
+      ApplicationsPage(currentUser: widget.userData),
       _buildProfil(context),
     ];
 
@@ -513,7 +508,10 @@ class _HomePageState extends State<HomePage> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => JobDetailPage(job: jobMap),
+                          builder: (_) => JobDetailPage(
+                            job: jobMap,
+                            currentUser: widget.userData,
+                          ),
                         ),
                       );
                     },
