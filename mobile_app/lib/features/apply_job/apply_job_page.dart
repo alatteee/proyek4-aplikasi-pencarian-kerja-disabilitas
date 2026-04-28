@@ -7,11 +7,13 @@ import 'application_success_page.dart';
 class ApplyJobPage extends StatefulWidget {
   final Map<String, dynamic> job;
   final Map<String, dynamic> currentUser;
+  final Map<String, dynamic> userDetails;
 
   const ApplyJobPage({
     super.key,
     required this.job,
     this.currentUser = const {},
+    this.userDetails = const {},
   });
 
   @override
@@ -32,6 +34,7 @@ class _ApplyJobPageState extends State<ApplyJobPage> {
   @override
   void initState() {
     super.initState();
+
     _messageController.addListener(() {
       setState(() {
         _messageLength = _messageController.text.length;
@@ -56,28 +59,29 @@ class _ApplyJobPageState extends State<ApplyJobPage> {
   }
 
   String get _fullName {
-    return widget.currentUser['nama_lengkap']?.toString() ??
-        widget.currentUser['full_name']?.toString() ??
-        widget.currentUser['username']?.toString() ??
-        'Albert Florest';
+    return widget.userDetails['nama_lengkap']?.toString() ??
+        widget.currentUser['nama_lengkap']?.toString() ??
+        '';
   }
 
   String get _email {
-    return widget.currentUser['email']?.toString() ?? 'albertflorest@gmail.com';
+    return widget.userDetails['email']?.toString() ??
+        widget.currentUser['email']?.toString() ??
+        '-';
   }
 
   String get _phone {
-    return widget.currentUser['phone']?.toString() ??
+    return widget.userDetails['phone']?.toString() ??
+        widget.userDetails['no_hp']?.toString() ??
+        widget.currentUser['phone']?.toString() ??
         widget.currentUser['no_hp']?.toString() ??
-        widget.currentUser['handphone']?.toString() ??
-        '0821 - 1892 - 8966';
+        '-';
   }
 
   String get _jobTitle => widget.job['title']?.toString() ?? '-';
   String get _companyName => widget.job['company_name']?.toString() ?? '-';
   String get _location => widget.job['location']?.toString() ?? '-';
   String get _jobType => widget.job['job_type']?.toString() ?? '-';
-
 
   String _formatFileSize(int? sizeInBytes) {
     if (sizeInBytes == null || sizeInBytes <= 0) return '-';
@@ -285,135 +289,137 @@ class _ApplyJobPageState extends State<ApplyJobPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _JobSummaryCard(
-                title: _jobTitle,
-                company: _companyName,
-                location: _location,
-                jobType: _jobType,
-              ),
-              const SizedBox(height: 22),
-              const Text(
-                'Data Diri',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primaryNavy,
-                ),
-              ),
-              const SizedBox(height: 3),
-              const Text(
-                'Data Diambil dari profil kamu. Pastikan sudah benar.',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textGray,
-                ),
-              ),
-              const SizedBox(height: 14),
-              _InfoField(
-                icon: Icons.person,
-                label: 'Nama Lengkap',
-                value: _fullName,
-              ),
-              const SizedBox(height: 13),
-              _InfoField(
-                icon: Icons.email_outlined,
-                label: 'Email',
-                value: _email,
-              ),
-              const SizedBox(height: 13),
-              _InfoField(
-                icon: Icons.phone,
-                label: 'No. Handphone',
-                value: _phone,
-              ),
-              const SizedBox(height: 26),
-              const Text(
-                'CV / Resume',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primaryNavy,
-                ),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'Upload atau pilih CV terbaru kamu',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textGray,
-                ),
-              ),
-              const SizedBox(height: 14),
-              _CvBox(
-                fileName: _selectedCvName,
-                fileSizeText: _selectedCvSize == null ? null : _formatFileSize(_selectedCvSize),
-                onPickFile: _pickCvFile,
-              ),
-              const SizedBox(height: 9),
-              const Row(
-                children: [
-                  Icon(Icons.info_outline, size: 15, color: AppColors.textGray),
-                  SizedBox(width: 4),
-                  Text(
-                    'Format File : PDF (Maks 10 MB)',
-                    style: TextStyle(fontSize: 11, color: AppColors.textGray),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'Pesan untuk Perusahaan (Opsional)',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primaryNavy,
-                ),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'Tulis pesan singkat untuk memperkenalkan dirimu',
-                style: TextStyle(fontSize: 11, color: AppColors.textGray),
-              ),
-              const SizedBox(height: 12),
-              _MessageBox(
-                controller: _messageController,
-                maxLength: _maxMessageLength,
-                currentLength: _messageLength,
-              ),
-              const SizedBox(height: 26),
-              SizedBox(
-                width: double.infinity,
-                height: 55,
-                child: ElevatedButton.icon(
-                  onPressed: _isSubmitting ? null : _submitApplication,
-                  icon: _isSubmitting
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      title: _jobTitle,
+                      company: _companyName,
+                      location: _location,
+                      jobType: _jobType,
+                    ),
+                    const SizedBox(height: 22),
+                    const Text(
+                      'Data Diri',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primaryNavy,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    const Text(
+                      'Data Diambil dari profil kamu. Pastikan sudah benar.',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textGray,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    _InfoField(
+                      icon: Icons.person,
+                      label: 'Nama Lengkap',
+                      value: _fullName.isEmpty ? '-' : _fullName,
+                    ),
+                    const SizedBox(height: 13),
+                    _InfoField(
+                      icon: Icons.email_outlined,
+                      label: 'Email',
+                      value: _email.isEmpty ? '-' : _email,
+                    ),
+                    const SizedBox(height: 13),
+                    _InfoField(
+                      icon: Icons.phone,
+                      label: 'No. Handphone',
+                      value: _phone.isEmpty ? '-' : _phone,
+                    ),
+                    const SizedBox(height: 26),
+                    const Text(
+                      'CV / Resume',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primaryNavy,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Upload atau pilih CV terbaru kamu',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textGray,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    _CvBox(
+                      fileName: _selectedCvName,
+                      fileSizeText: _selectedCvSize == null
+                          ? null
+                          : _formatFileSize(_selectedCvSize),
+                      onPickFile: _pickCvFile,
+                    ),
+                    const SizedBox(height: 9),
+                    const Row(
+                      children: [
+                        Icon(Icons.info_outline, size: 15, color: AppColors.textGray),
+                        SizedBox(width: 4),
+                        Text(
+                          'Format File : PDF (Maks 10 MB)',
+                          style: TextStyle(fontSize: 11, color: AppColors.textGray),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Pesan untuk Perusahaan (Opsional)',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primaryNavy,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Tulis pesan singkat untuk memperkenalkan dirimu',
+                      style: TextStyle(fontSize: 11, color: AppColors.textGray),
+                    ),
+                    const SizedBox(height: 12),
+                    _MessageBox(
+                      controller: _messageController,
+                      maxLength: _maxMessageLength,
+                      currentLength: _messageLength,
+                    ),
+                    const SizedBox(height: 26),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 55,
+                      child: ElevatedButton.icon(
+                        onPressed: _isSubmitting ? null : _submitApplication,
+                        icon: _isSubmitting
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                ),
+                              )
+                            : const Icon(Icons.send_outlined, color: Colors.white, size: 24),
+                        label: Text(
+                          _isSubmitting ? 'Mengirim...' : 'Kirim Lamaran',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
                           ),
-                        )
-                      : const Icon(Icons.send_outlined, color: Colors.white, size: 24),
-                  label: Text(
-                    _isSubmitting ? 'Mengirim...' : 'Kirim Lamaran',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryNavy,
+                          disabledBackgroundColor: AppColors.primaryNavy.withOpacity(0.65),
+                          elevation: 4,
+                          shadowColor: Colors.black26,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryNavy,
-                    disabledBackgroundColor: AppColors.primaryNavy.withOpacity(0.65),
-                    elevation: 4,
-                    shadowColor: Colors.black26,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-              ),
                   ],
                 ),
               ),
@@ -642,61 +648,61 @@ class _CvBox extends StatelessWidget {
           ),
           child: Row(
             children: [
-          Container(
-            width: 43,
-            height: 43,
-            decoration: BoxDecoration(
-              color: AppColors.accentBlue.withOpacity(0.18),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(
-              Icons.description_outlined,
-              color: AppColors.primaryNavy,
-              size: 30,
-            ),
-          ),
-          const SizedBox(width: 13),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  hasFile ? fileName! : 'Pilih CV / Resume',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.primaryNavy,
-                    fontWeight: FontWeight.bold,
+              Container(
+                width: 43,
+                height: 43,
+                decoration: BoxDecoration(
+                  color: AppColors.accentBlue.withOpacity(0.18),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.description_outlined,
+                  color: AppColors.primaryNavy,
+                  size: 30,
+                ),
+              ),
+              const SizedBox(width: 13),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      hasFile ? fileName! : 'Pilih CV / Resume',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.primaryNavy,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      hasFile ? 'PDF • ${fileSizeText ?? '-'}' : 'PDF • Maks 10 MB',
+                      style: const TextStyle(fontSize: 11, color: AppColors.textGray),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                height: 32,
+                child: OutlinedButton(
+                  onPressed: onPickFile,
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    foregroundColor: AppColors.primaryNavy,
+                    side: const BorderSide(color: AppColors.primaryNavy, width: 1),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
                   ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  hasFile ? 'PDF • ${fileSizeText ?? '-'}' : 'PDF • Maks 10 MB',
-                  style: const TextStyle(fontSize: 11, color: AppColors.textGray),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          SizedBox(
-            height: 32,
-            child: OutlinedButton(
-              onPressed: onPickFile,
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                foregroundColor: AppColors.primaryNavy,
-                side: const BorderSide(color: AppColors.primaryNavy, width: 1),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(6),
+                  child: Text(
+                    hasFile ? 'Ganti' : 'Pilih',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
-              child: Text(
-                hasFile ? 'Ganti' : 'Pilih',
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ),
             ],
           ),
         ),

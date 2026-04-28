@@ -7,11 +7,44 @@ import 'account_settings_view.dart';
 import 'help_view.dart';
 import 'about_view.dart';
 import '../saved_jobs/saved_jobs_page.dart';
+import 'profile_controller.dart';
 
-class ProfileView extends StatelessWidget {
+class ProfileView extends StatefulWidget {
   final Map<String, dynamic> currentUser;
 
   const ProfileView({super.key, required this.currentUser});
+
+  @override
+  State<ProfileView> createState() => _ProfileViewState();
+}
+
+class _ProfileViewState extends State<ProfileView> {
+  Map<String, dynamic>? userDetails;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    final userId = widget.currentUser['_id'];
+
+    if (userId == null) {
+      setState(() => isLoading = false);
+      return;
+    }
+
+    final profile = await ProfileController.getProfileByUserId(userId);
+
+    if (!mounted) return;
+
+    setState(() {
+      userDetails = profile;
+      isLoading = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,12 +70,16 @@ class ProfileView extends StatelessWidget {
                    crossAxisAlignment: CrossAxisAlignment.start,
                    children: [
                      Text(
-                       currentUser['username'] ?? 'User',
+                      userDetails?['nama_lengkap'] ??
+                          widget.currentUser['username'] ??
+                          'User',
                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.primaryNavy),
                      ),
                      const SizedBox(height: 2),
-                     Text(
-                       currentUser['email'] ?? '-',
+                      Text(
+                        userDetails?['email'] ??
+                            widget.currentUser['email'] ??
+                            '-',
                        style: const TextStyle(fontSize: 14, color: AppColors.textGray),
                      ),
                      const SizedBox(height: 14),
@@ -52,7 +89,7 @@ class ProfileView extends StatelessWidget {
                        child: OutlinedButton(
                          onPressed: () {
                            Navigator.push(context, MaterialPageRoute(
-                             builder: (_) => ProfileDetailView(currentUser: currentUser)
+                             builder: (_) => ProfileDetailView(currentUser: widget.currentUser)
                            ));
                          },
                          style: OutlinedButton.styleFrom(
@@ -80,7 +117,7 @@ class ProfileView extends StatelessWidget {
                Navigator.push(
                  context,
                  MaterialPageRoute(
-                   builder: (_) => SavedJobsPage(currentUser: currentUser),
+                   builder: (_) => SavedJobsPage(currentUser: widget.currentUser),
                  ),
                );
              },
@@ -91,7 +128,7 @@ class ProfileView extends StatelessWidget {
              label: 'Pengaturan Akun', 
              onTap: () {
                Navigator.push(context, MaterialPageRoute(
-                 builder: (_) => AccountSettingsView(currentUser: currentUser)
+                 builder: (_) => AccountSettingsView(currentUser: widget.currentUser)
                ));
              },
            ),
