@@ -105,66 +105,79 @@ class _ApplicationsPageState extends State<ApplicationsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
-      onRefresh: _loadApplications,
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(child: _StatusButton('Dikirim', _selectedStatus == 'Dikirim', () => _setStatus('Dikirim'))),
-                const SizedBox(width: 26),
-                Expanded(child: _StatusButton('Diproses', _selectedStatus == 'Diproses', () => _setStatus('Diproses'))),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(child: _StatusButton('Selesai', _selectedStatus == 'Selesai', () => _setStatus('Selesai'))),
-                const SizedBox(width: 26),
-                Expanded(child: _StatusButton('Ditolak', _selectedStatus == 'Ditolak', () => _setStatus('Ditolak'))),
-              ],
-            ),
-            const SizedBox(height: 28),
-            if (_isLoading)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.only(top: 60),
-                  child: CircularProgressIndicator(color: AppColors.primaryNavy),
-                ),
-              )
-            else if (_filteredApplications.isEmpty)
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 60),
-                  child: Text(
-                    'Belum ada lamaran ${_selectedStatus.toLowerCase()}',
-                    style: const TextStyle(
-                      color: AppColors.textGray,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              )
-            else
-              ..._filteredApplications.map((application) {
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 20),
-                  child: _ApplicationCard(
-                    title: application['job_title']?.toString() ?? '-',
-                    company: application['company_name']?.toString() ?? '-',
-                    statusLabel: _statusToFilter(application['status']?.toString()),
-                    dateText: _formatDate(application['created_at']),
-                  ),
-                );
-              }),
-          ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(child: _StatusButton('Dikirim', _selectedStatus == 'Dikirim', () => _setStatus('Dikirim'))),
+                  const SizedBox(width: 26),
+                  Expanded(child: _StatusButton('Diproses', _selectedStatus == 'Diproses', () => _setStatus('Diproses'))),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(child: _StatusButton('Selesai', _selectedStatus == 'Selesai', () => _setStatus('Selesai'))),
+                  const SizedBox(width: 26),
+                  Expanded(child: _StatusButton('Ditolak', _selectedStatus == 'Ditolak', () => _setStatus('Ditolak'))),
+                ],
+              ),
+            ],
+          ),
         ),
-      ),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: _loadApplications,
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_isLoading)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.only(top: 60),
+                        child: CircularProgressIndicator(color: AppColors.primaryNavy),
+                      ),
+                    )
+                  else if (_filteredApplications.isEmpty)
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 60),
+                        child: Text(
+                          'Belum ada lamaran ${_selectedStatus.toLowerCase()}',
+                          style: const TextStyle(
+                            color: AppColors.textGray,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    ..._filteredApplications.map((application) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 20),
+                        child: _ApplicationCard(
+                          title: application['job_title']?.toString() ?? '-',
+                          company: application['company_name']?.toString() ?? '-',
+                          statusLabel: _statusToFilter(application['status']?.toString()),
+                          dateText: _formatDate(application['created_at']),
+                        ),
+                      );
+                    }),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

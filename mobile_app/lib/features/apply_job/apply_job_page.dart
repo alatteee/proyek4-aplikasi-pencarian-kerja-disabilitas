@@ -268,17 +268,23 @@ class _ApplyJobPageState extends State<ApplyJobPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 10, 24, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _Header(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 10, 24, 0),
+              child: _Header(
                 title: 'Lamar Sekarang',
                 onBack: () => Navigator.pop(context),
               ),
-              const SizedBox(height: 22),
-              _JobSummaryCard(
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 22, 24, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _JobSummaryCard(
                 title: _jobTitle,
                 company: _companyName,
                 location: _location,
@@ -408,8 +414,11 @@ class _ApplyJobPageState extends State<ApplyJobPage> {
                   ),
                 ),
               ),
-            ],
-          ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
