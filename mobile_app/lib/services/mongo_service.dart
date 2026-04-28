@@ -23,9 +23,11 @@ class MongoService {
 
   static DbCollection get _jobVacanciesCollection => db.collection('job_vacancies');
   static DbCollection get _savedJobsCollection => db.collection('saved_jobs');
+  static DbCollection get _jobApplicationsCollection => db.collection('job_applications');
 
   static String getMongoId(dynamic value) {
     if (value == null) return '';
+    if (value is ObjectId) return value.oid;
     return value.toString();
   }
 
@@ -180,4 +182,64 @@ class MongoService {
       return [];
     }
   }
+
+  static Future<bool> hasAppliedJob({
+    required String userId,
+    required String jobId,
+  }) async {
+    try {
+      if (userId.isEmpty || jobId.isEmpty) return false;
+
+      final existing = await _jobApplicationsCollection.findOne({
+        'user_id': userId,
+        'job_id': jobId,
+      });
+
+      return existing != null;
+    } catch (e) {
+      // ignore: avoid_print
+      print('Gagal mengecek lamaran: $e');
+      return false;
+    }
+  }
+
+  static Future<bool> submitJobApplication({
+    required Map<String, dynamic> applicationData,
+  }) async {
+    try {
+      final userId = applicationData['user_id']?.toString() ?? '';
+      final jobId = applicationData['job_id']?.toString() ?? '';
+
+      if (userId.isEmpty || jobId.isEmpty) return false;
+
+      final alreadyApplied = await hasAppliedJob(userId: userId, jobId: jobId);
+      if (alreadyApplied) return false;
+
+      await _jobApplicationsCollection.insertOne(applicationData);
+      return true;
+    } catch (e) {
+      // ignore: avoid_print
+      print('Gagal mengirim lamaran: $e');
+      return false;
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getUserApplications({
+    required String userId,
+  }) async {
+    try {
+      if (userId.isEmpty) return [];
+
+      final applications = await _jobApplicationsCollection
+          .find(where.eq('user_id', userId).sortBy('created_at', descending: true))
+          .toList();
+
+      return applications.cast<Map<String, dynamic>>();
+    } catch (e) {
+      // ignore: avoid_print
+      print('Gagal mengambil data lamaran: $e');
+      return [];
+    }
+  }
+
 }

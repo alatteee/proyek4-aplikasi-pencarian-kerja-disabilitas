@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
+import '../apply_job/apply_job_page.dart';
 
 class JobDetailPage extends StatelessWidget {
   final Map<String, dynamic> job;
-  const JobDetailPage({Key? key, required this.job}) : super(key: key);
+  final Map<String, dynamic> currentUser;
+
+  const JobDetailPage({
+    super.key,
+    required this.job,
+    this.currentUser = const {},
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -135,7 +142,17 @@ class JobDetailPage extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ApplyJobPage(
+                          job: job,
+                          currentUser: currentUser,
+                        ),
+                      ),
+                    );
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryNavy,
                     padding: const EdgeInsets.symmetric(vertical: 18),
