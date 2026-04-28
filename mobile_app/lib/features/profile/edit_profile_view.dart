@@ -2,6 +2,7 @@
 import '../../core/constants/app_colors.dart';
 import 'profile_controller.dart';
 import 'widgets/skill_chip.dart';
+import 'package:file_picker/file_picker.dart';
 
 class EditProfileView extends StatefulWidget {
   final Map<String, dynamic> currentUser;
@@ -27,6 +28,10 @@ class _EditProfileViewState extends State<EditProfileView> {
   List<String> _skills = [];
   String? _cvFileName;
   bool _isLoading = false;
+  String? _cvFilePath;
+  int? _cvFileSize;
+
+  static const int _maxCvSizeBytes = 10 * 1024 * 1024;
 
   final List<String> _kelaminOptions = ['Laki-laki', 'Perempuan'];
   final List<String> _disabilitasOptions = [
@@ -82,12 +87,29 @@ class _EditProfileViewState extends State<EditProfileView> {
     _skillController.clear();
   }
 
-  void _pickCV() {
-    // Fungsi ini dinonaktifkan sementara untuk menghindari error kompilasi
-    // Kita buat simulasi tampilan saja dulu
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Fitur pilih file akan segera aktif')),
+  Future<void> _pickCV() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf'],
+      allowMultiple: false,
     );
+
+    if (result == null || result.files.isEmpty) return;
+
+    final file = result.files.single;
+
+    if (file.size > _maxCvSizeBytes) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ukuran CV maksimal 10 MB')),
+      );
+      return;
+    }
+
+    setState(() {
+      _cvFileName = file.name;
+      _cvFilePath = file.path;
+      _cvFileSize = file.size;
+    });
   }
 
   Future<void> _saveProfile() async {
@@ -112,6 +134,8 @@ class _EditProfileViewState extends State<EditProfileView> {
       'deskripsi_disabilitas': _deskripsiController.text.trim(),
       'skills': _skills,
       'cv_filename': _cvFileName,
+      'cv_file_path': _cvFilePath,
+      'cv_file_size': _cvFileSize,
     };
 
     final success = await ProfileController.createOrUpdateProfile(data);
