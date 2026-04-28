@@ -207,7 +207,7 @@ class _HomePageState extends State<HomePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Halo, \. \!',
+            'Halo, ${widget.userData['username'] ?? 'User'}. ${_getGreeting()}!',
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
           ),
           const SizedBox(height: 20),
