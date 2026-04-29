@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
+import '../../services/mongo_service.dart';
 
-class CompanyHomePage extends StatelessWidget {
+class CompanyHomePage extends StatefulWidget {
   final Map<String, dynamic> userData;
   final bool showSuccessDialog;
 
@@ -19,77 +20,362 @@ class CompanyHomePage extends StatelessWidget {
   static const Color skyBlue = Color(0xFF48BEEF);
 
   @override
-  Widget build(BuildContext context) {
-    final companyName =
-        userData['companyName'] ?? userData['name'] ?? 'Perusahaan';
+  State<CompanyHomePage> createState() => _CompanyHomePageState();
+}
 
+class _CompanyHomePageState extends State<CompanyHomePage> {
+  Map<String, dynamic>? company;
+  List<Map<String, dynamic>> companyJobs = [];
+  List<Map<String, dynamic>> applicants = [];
+  bool isLoading = true;
+
+  int _selectedIndex = 0;
+
+  Color get blue => CompanyHomePage.blue;
+  Color get lightBlue => CompanyHomePage.lightBlue;
+  Color get lightOrange => CompanyHomePage.lightOrange;
+  Color get lightGreen => CompanyHomePage.lightGreen;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDashboardData();
+  }
+
+  Future<void> _loadDashboardData() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    final companyName = _getCompanyName();
+    final companyData = await MongoService.getCompanyByName(companyName);
+
+    if (companyData == null) {
+      if (!mounted) return;
+      setState(() {
+        company = null;
+        companyJobs = [];
+        applicants = [];
+        isLoading = false;
+      });
+      return;
+    }
+
+    final companyId = MongoService.getMongoId(companyData['_id']);
+    final jobsData = await MongoService.getCompanyJobs(companyId: companyId);
+    final applicantsData =
+        await MongoService.getCompanyApplicants(companyId: companyId);
+
+    if (!mounted) return;
+
+    setState(() {
+      company = companyData;
+      companyJobs = jobsData;
+      applicants = applicantsData;
+      isLoading = false;
+    });
+  }
+
+  String _getCompanyName() {
+    return widget.userData['company_name']?.toString() ??
+        widget.userData['companyName']?.toString() ??
+        widget.userData['name']?.toString() ??
+        'PT Maju Bersama';
+  }
+
+  String _formatDate(dynamic value) {
+    if (value == null) return '-';
+
+    DateTime? date;
+    if (value is DateTime) {
+      date = value;
+    } else {
+      date = DateTime.tryParse(value.toString());
+    }
+
+    if (date == null) return value.toString();
+
+    const months = [
+      'Januari',
+      'Februari',
+      'Maret',
+      'April',
+      'Mei',
+      'Juni',
+      'Juli',
+      'Agustus',
+      'September',
+      'Oktober',
+      'November',
+      'Desember',
+    ];
+
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
+  }
+
+  String _getInitials(String name) {
+    final parts = name.trim().split(' ');
+    if (parts.isEmpty || name.trim().isEmpty) return '?';
+
+    if (parts.length == 1) {
+      return parts.first.substring(0, 1).toUpperCase();
+    }
+
+    return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+  }
+
+  int get activeJobCount {
+    return companyJobs.where((job) => job['status'] == 'active').length;
+  }
+
+  int get completedApplicantCount {
+    return applicants.where((app) {
+      final status = app['status']?.toString().toLowerCase() ?? '';
+      return status == 'accepted' || status == 'diterima' || status == 'selesai';
+    }).length;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       bottomNavigationBar: _buildBottomNav(),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(),
-              const SizedBox(height: 26),
-              Text(
-                'Halo, $companyName. Selamat Pagi!',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: navy,
-                ),
+        child: _getCurrentPage(),
+      ),
+    );
+  }
+
+  Widget _getCurrentPage() {
+    switch (_selectedIndex) {
+      case 0:
+        return _buildDashboardContent();
+      case 1:
+        return _buildPlaceholderPage(
+          title: 'Lowongan Saya',
+          icon: Icons.business_center_outlined,
+        );
+      case 2:
+        return _buildPlaceholderPage(
+          title: 'Pelamar',
+          icon: Icons.groups_outlined,
+        );
+      case 3:
+        return _buildPlaceholderPage(
+          title: 'Profil Perusahaan',
+          icon: Icons.person_outline,
+        );
+      default:
+        return _buildDashboardContent();
+    }
+  }
+
+  Widget _buildDashboardContent() {
+    final companyName = company?['company_name']?.toString() ?? _getCompanyName();
+
+    return RefreshIndicator(
+      onRefresh: _loadDashboardData,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(),
+            const SizedBox(height: 26),
+            Text(
+              'Halo, $companyName. Selamat Pagi!',
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: CompanyHomePage.navy,
               ),
-              const SizedBox(height: 24),
-              _buildCreateJobCard(),
-              const SizedBox(height: 32),
-              _sectionTitle('Ringkasan'),
-              const SizedBox(height: 16),
-              const Row(
+            ),
+            const SizedBox(height: 24),
+            _buildCreateJobCard(),
+            const SizedBox(height: 32),
+            _sectionTitle('Ringkasan'),
+            const SizedBox(height: 16),
+            _buildSummarySection(),
+            const SizedBox(height: 34),
+            _sectionHeader(
+              'Lowongan Aktif',
+              onSeeAll: () => setState(() => _selectedIndex = 1),
+            ),
+            const SizedBox(height: 16),
+            _buildJobSection(),
+            const SizedBox(height: 34),
+            _sectionHeader(
+              'Pelamar Terbaru',
+              onSeeAll: () => setState(() => _selectedIndex = 2),
+            ),
+            const SizedBox(height: 16),
+            _buildApplicantSection(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPlaceholderPage({
+    required String title,
+    required IconData icon,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildHeader(),
+          const SizedBox(height: 36),
+          Expanded(
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
-                    child: _SummaryCard(
-                      value: '1',
-                      label: 'Lowongan Aktif',
-                      color: lightBlue,
+                  Icon(
+                    icon,
+                    size: 56,
+                    color: CompanyHomePage.navy,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      color: CompanyHomePage.navy,
                     ),
                   ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: _SummaryCard(
-                      value: '10',
-                      label: 'Pelamar Masuk',
-                      color: lightOrange,
-                    ),
-                  ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: _SummaryCard(
-                      value: '5',
-                      label: 'Selesai',
-                      color: lightGreen,
+                  const SizedBox(height: 8),
+                  Text(
+                    'Halaman ini akan dikembangkan selanjutnya.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.blueGrey.shade600,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 34),
-              _sectionHeader('Lowongan Aktif'),
-              const SizedBox(height: 16),
-              _buildJobCard(),
-              const SizedBox(height: 34),
-              _sectionHeader('Pelamar Terbaru'),
-              const SizedBox(height: 16),
-              _buildApplicantCard(),
-              const SizedBox(height: 16),
-              _buildApplicantCard(
-                initials: 'WP',
-                name: 'Wawa Putri',
-                date: '11 April 2026',
-              ),
-            ],
+            ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummarySection() {
+    if (isLoading) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 20),
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    return Row(
+      children: [
+        Expanded(
+          child: _SummaryCard(
+            value: activeJobCount.toString(),
+            label: 'Lowongan Aktif',
+            color: lightBlue,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _SummaryCard(
+            value: applicants.length.toString(),
+            label: 'Pelamar Masuk',
+            color: lightOrange,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _SummaryCard(
+            value: completedApplicantCount.toString(),
+            label: 'Selesai',
+            color: lightGreen,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildJobSection() {
+    if (isLoading) return _buildLoadingCard();
+
+    if (companyJobs.isEmpty) {
+      return _buildEmptyCard('Belum ada lowongan aktif');
+    }
+
+    final latestJobs = companyJobs.take(2).toList();
+
+    return Column(
+      children: latestJobs.map((job) {
+        final jobApplicants = applicants.where((app) {
+          return app['job_id']?.toString() == MongoService.getMongoId(job['_id']);
+        }).length;
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 14),
+          child: _buildJobCard(
+            title: job['title']?.toString() ?? '-',
+            date: _formatDate(job['created_at']),
+            applicantCount: jobApplicants,
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildApplicantSection() {
+    if (isLoading) return _buildLoadingCard();
+
+    if (applicants.isEmpty) {
+      return _buildEmptyCard('Belum ada pelamar');
+    }
+
+    final latestApplicants = applicants.take(2).toList();
+
+    return Column(
+      children: latestApplicants.map((applicant) {
+        final name = applicant['full_name']?.toString() ?? 'Pelamar';
+        return _buildApplicantCard(
+          initials: _getInitials(name),
+          name: name,
+          jobTitle: applicant['job_title']?.toString() ?? '-',
+          date: _formatDate(applicant['created_at']),
+          status: applicant['status']?.toString() ?? 'pending',
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildLoadingCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: _cardDecoration(),
+      child: const Center(child: CircularProgressIndicator()),
+    );
+  }
+
+  Widget _buildEmptyCard(String text) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: _cardDecoration(),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          fontSize: 14,
+          color: Colors.blueGrey.shade700,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
@@ -107,7 +393,7 @@ class CompanyHomePage extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 38,
                   fontWeight: FontWeight.w900,
-                  color: navy,
+                  color: CompanyHomePage.navy,
                 ),
               ),
               TextSpan(
@@ -115,7 +401,7 @@ class CompanyHomePage extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 38,
                   fontWeight: FontWeight.w900,
-                  color: skyBlue,
+                  color: CompanyHomePage.skyBlue,
                 ),
               ),
             ],
@@ -124,7 +410,7 @@ class CompanyHomePage extends StatelessWidget {
         const Icon(
           Icons.notifications,
           size: 32,
-          color: navy,
+          color: CompanyHomePage.navy,
         ),
       ],
     );
@@ -152,18 +438,18 @@ class CompanyHomePage extends StatelessWidget {
             backgroundColor: Colors.white,
             child: Icon(
               Icons.add,
-              size: 50,
-              color: blue,
+              size: 38,
+              color: CompanyHomePage.blue,
             ),
           ),
-          const SizedBox(width: 22),
+          const SizedBox(width: 18),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: const [
                 Text(
                   'Buat Lowongan Baru',
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: Colors.white,
@@ -196,29 +482,36 @@ class CompanyHomePage extends StatelessWidget {
       style: const TextStyle(
         fontSize: 20,
         fontWeight: FontWeight.w900,
-        color: navy,
+        color: CompanyHomePage.navy,
       ),
     );
   }
 
-  Widget _sectionHeader(String title) {
+  Widget _sectionHeader(String title, {VoidCallback? onSeeAll}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         _sectionTitle(title),
-        const Text(
-          'Lihat semua',
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.blue,
-            fontWeight: FontWeight.w500,
+        GestureDetector(
+          onTap: onSeeAll,
+          child: const Text(
+            'Lihat semua',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.blue,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildJobCard() {
+  Widget _buildJobCard({
+    required String title,
+    required String date,
+    required int applicantCount,
+  }) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
@@ -236,7 +529,7 @@ class CompanyHomePage extends StatelessWidget {
             child: const Icon(
               Icons.headset_mic,
               size: 42,
-              color: navy,
+              color: CompanyHomePage.navy,
             ),
           ),
           const SizedBox(width: 18),
@@ -244,19 +537,19 @@ class CompanyHomePage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Customer Service',
+                Text(
+                  title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w900,
-                    color: navy,
+                    color: CompanyHomePage.navy,
                   ),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Dipublikasikan  10 April 2026',
+                  'Dipublikasikan  $date',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -267,14 +560,18 @@ class CompanyHomePage extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
                 Row(
-                  children: const [
-                    Icon(Icons.person, size: 20, color: navy),
-                    SizedBox(width: 12),
+                  children: [
+                    const Icon(
+                      Icons.person,
+                      size: 20,
+                      color: CompanyHomePage.navy,
+                    ),
+                    const SizedBox(width: 12),
                     Text(
-                      '5 pelamar',
-                      style: TextStyle(
+                      '$applicantCount pelamar',
+                      style: const TextStyle(
                         fontSize: 13,
-                        color: navy,
+                        color: CompanyHomePage.navy,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -289,9 +586,11 @@ class CompanyHomePage extends StatelessWidget {
   }
 
   Widget _buildApplicantCard({
-    String initials = 'AF',
-    String name = 'Albert Florest',
-    String date = '12 April 2026',
+    required String initials,
+    required String name,
+    required String jobTitle,
+    required String date,
+    required String status,
   }) {
     return Container(
       width: double.infinity,
@@ -306,7 +605,7 @@ class CompanyHomePage extends StatelessWidget {
             child: Text(
               initials,
               style: const TextStyle(
-                color: navy,
+                color: CompanyHomePage.navy,
                 fontSize: 14,
                 fontWeight: FontWeight.w900,
               ),
@@ -324,12 +623,12 @@ class CompanyHomePage extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w900,
-                    color: navy,
+                    color: CompanyHomePage.navy,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Customer Service',
+                  jobTitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -355,15 +654,14 @@ class CompanyHomePage extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
                 decoration: BoxDecoration(
                   color: lightOrange,
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Text(
-                  'Diproses',
-                  style: TextStyle(
+                child: Text(
+                  _statusLabel(status),
+                  style: const TextStyle(
                     color: Colors.orange,
                     fontSize: 12,
                     fontWeight: FontWeight.w800,
@@ -375,6 +673,21 @@ class CompanyHomePage extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _statusLabel(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return 'Diproses';
+      case 'reviewed':
+        return 'Ditinjau';
+      case 'accepted':
+        return 'Diterima';
+      case 'rejected':
+        return 'Ditolak';
+      default:
+        return status;
+    }
   }
 
   BoxDecoration _cardDecoration() {
@@ -395,19 +708,39 @@ class CompanyHomePage extends StatelessWidget {
     return Container(
       height: 82,
       decoration: const BoxDecoration(
-        color: navy,
+        color: CompanyHomePage.navy,
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(28),
           topRight: Radius.circular(28),
         ),
       ),
-      child: const Row(
+      child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _BottomItem(icon: Icons.home, label: 'Beranda', active: true),
-          _BottomItem(icon: Icons.business_center_outlined, label: 'Lowongan'),
-          _BottomItem(icon: Icons.groups_outlined, label: 'Pelamar'),
-          _BottomItem(icon: Icons.person_outline, label: 'Profil'),
+          _BottomItem(
+            icon: Icons.home,
+            label: 'Beranda',
+            active: _selectedIndex == 0,
+            onTap: () => setState(() => _selectedIndex = 0),
+          ),
+          _BottomItem(
+            icon: Icons.business_center_outlined,
+            label: 'Lowongan',
+            active: _selectedIndex == 1,
+            onTap: () => setState(() => _selectedIndex = 1),
+          ),
+          _BottomItem(
+            icon: Icons.groups_outlined,
+            label: 'Pelamar',
+            active: _selectedIndex == 2,
+            onTap: () => setState(() => _selectedIndex = 2),
+          ),
+          _BottomItem(
+            icon: Icons.person_outline,
+            label: 'Profil',
+            active: _selectedIndex == 3,
+            onTap: () => setState(() => _selectedIndex = 3),
+          ),
         ],
       ),
     );
@@ -477,35 +810,41 @@ class _BottomItem extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool active;
+  final VoidCallback onTap;
 
   const _BottomItem({
     required this.icon,
     required this.label,
+    required this.onTap,
     this.active = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 78,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            icon,
-            size: 26,
-            color: active ? Colors.white : Colors.white.withOpacity(0.85),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 12,
-              fontWeight: active ? FontWeight.w900 : FontWeight.w700,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: SizedBox(
+        width: 78,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 26,
+              color: active ? Colors.white : Colors.white.withOpacity(0.65),
             ),
-          ),
-        ],
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: active ? Colors.white : Colors.white.withOpacity(0.65),
+                fontSize: 12,
+                fontWeight: active ? FontWeight.w900 : FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
