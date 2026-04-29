@@ -9,6 +9,7 @@ import 'about_view.dart';
 import '../saved_jobs/saved_jobs_page.dart';
 import 'profile_controller.dart';
 import 'dart:io';
+import 'accessibility_settings_view.dart';
 
 class ProfileView extends StatefulWidget {
   final Map<String, dynamic> currentUser;
@@ -172,7 +173,14 @@ class _ProfileViewState extends State<ProfileView> {
           ProfileMenuItem(
             icon: Icons.accessibility_new,
             label: 'Pengaturan Aksesibilitas',
-            onTap: () {},
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const AccessibilitySettingsView(),
+                ),
+              );
+            },
           ),
           ProfileMenuItem(
             icon: Icons.settings,
