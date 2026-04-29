@@ -36,9 +36,12 @@ class MongoService {
     if (!_isDbOpen) await connect();
   }
 
-  static DbCollection get _jobVacanciesCollection => db.collection('job_vacancies');
+  static DbCollection get _jobVacanciesCollection =>
+      db.collection('job_vacancies');
   static DbCollection get _savedJobsCollection => db.collection('saved_jobs');
-  static DbCollection get _jobApplicationsCollection => db.collection('job_applications');
+  static DbCollection get _jobApplicationsCollection =>
+      db.collection('job_applications');
+  static DbCollection get _companiesCollection => db.collection('companies');
 
   static String getMongoId(dynamic value) {
     if (value == null) return '';
@@ -59,11 +62,15 @@ class MongoService {
     }
   }
 
-  static Future<bool> saveJob({required String userId, required String jobId}) async {
+  static Future<bool> saveJob({
+    required String userId,
+    required String jobId,
+  }) async {
     try {
       await ensureConnected();
       if (userId.isEmpty || jobId.isEmpty) return false;
-      final existing = await _savedJobsCollection.findOne({'user_id': userId, 'job_id': jobId});
+      final existing =
+          await _savedJobsCollection.findOne({'user_id': userId, 'job_id': jobId});
       if (existing != null) return true;
       await _savedJobsCollection.insertOne({
         'user_id': userId,
@@ -77,7 +84,10 @@ class MongoService {
     }
   }
 
-  static Future<bool> unsaveJob({required String userId, required String jobId}) async {
+  static Future<bool> unsaveJob({
+    required String userId,
+    required String jobId,
+  }) async {
     try {
       await ensureConnected();
       if (userId.isEmpty || jobId.isEmpty) return false;
@@ -89,11 +99,15 @@ class MongoService {
     }
   }
 
-  static Future<bool> isJobSaved({required String userId, required String jobId}) async {
+  static Future<bool> isJobSaved({
+    required String userId,
+    required String jobId,
+  }) async {
     try {
       await ensureConnected();
       if (userId.isEmpty || jobId.isEmpty) return false;
-      final savedJob = await _savedJobsCollection.findOne({'user_id': userId, 'job_id': jobId});
+      final savedJob =
+          await _savedJobsCollection.findOne({'user_id': userId, 'job_id': jobId});
       return savedJob != null;
     } catch (e) {
       print('Gagal mengecek lowongan tersimpan: $e');
@@ -105,7 +119,8 @@ class MongoService {
     try {
       await ensureConnected();
       if (userId.isEmpty) return <String>{};
-      final savedJobs = await _savedJobsCollection.find(where.eq('user_id', userId)).toList();
+      final savedJobs =
+          await _savedJobsCollection.find(where.eq('user_id', userId)).toList();
       return savedJobs
           .map((item) => item['job_id']?.toString() ?? '')
           .where((id) => id.isNotEmpty)
@@ -116,7 +131,9 @@ class MongoService {
     }
   }
 
-  static Future<List<Map<String, dynamic>>> getSavedJobs({required String userId}) async {
+  static Future<List<Map<String, dynamic>>> getSavedJobs({
+    required String userId,
+  }) async {
     try {
       await ensureConnected();
       if (userId.isEmpty) return [];
@@ -136,8 +153,11 @@ class MongoService {
       }
       if (savedJobIds.isEmpty) return [];
 
-      final activeJobs = await _jobVacanciesCollection.find(where.eq('status', 'active')).toList();
-      final result = activeJobs.where((job) => savedJobIds.contains(getMongoId(job['_id']))).map<Map<String, dynamic>>((job) {
+      final activeJobs =
+          await _jobVacanciesCollection.find(where.eq('status', 'active')).toList();
+      final result = activeJobs
+          .where((job) => savedJobIds.contains(getMongoId(job['_id'])))
+          .map<Map<String, dynamic>>((job) {
         final jobMap = Map<String, dynamic>.from(job);
         final jobId = getMongoId(jobMap['_id']);
         jobMap['saved_at'] = savedAtByJobId[jobId];
@@ -156,11 +176,15 @@ class MongoService {
     }
   }
 
-  static Future<bool> hasAppliedJob({required String userId, required String jobId}) async {
+  static Future<bool> hasAppliedJob({
+    required String userId,
+    required String jobId,
+  }) async {
     try {
       await ensureConnected();
       if (userId.isEmpty || jobId.isEmpty) return false;
-      final existing = await _jobApplicationsCollection.findOne({'user_id': userId, 'job_id': jobId});
+      final existing =
+          await _jobApplicationsCollection.findOne({'user_id': userId, 'job_id': jobId});
       return existing != null;
     } catch (e) {
       print('Gagal mengecek lamaran: $e');
@@ -168,7 +192,9 @@ class MongoService {
     }
   }
 
-  static Future<bool> submitJobApplication({required Map<String, dynamic> applicationData}) async {
+  static Future<bool> submitJobApplication({
+    required Map<String, dynamic> applicationData,
+  }) async {
     try {
       await ensureConnected();
       final userId = applicationData['user_id']?.toString() ?? '';
@@ -184,7 +210,9 @@ class MongoService {
     }
   }
 
-  static Future<List<Map<String, dynamic>>> getUserApplications({required String userId}) async {
+  static Future<List<Map<String, dynamic>>> getUserApplications({
+    required String userId,
+  }) async {
     try {
       await ensureConnected();
       if (userId.isEmpty) return [];
@@ -194,6 +222,73 @@ class MongoService {
       return applications.cast<Map<String, dynamic>>();
     } catch (e) {
       print('Gagal mengambil data lamaran: $e');
+      return [];
+    }
+  }
+
+  // ================= COMPANY DASHBOARD =================
+
+  static Future<Map<String, dynamic>?> getCompanyByName(
+    String companyName,
+  ) async {
+    try {
+      await ensureConnected();
+
+      if (companyName.isEmpty) return null;
+
+      final company = await _companiesCollection.findOne(
+        where.eq('company_name', companyName),
+      );
+
+      return company;
+    } catch (e) {
+      print('Gagal mengambil data company: $e');
+      return null;
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getCompanyJobs({
+    required String companyId,
+  }) async {
+    try {
+      await ensureConnected();
+
+      if (companyId.isEmpty) return [];
+
+      final jobs = await _jobVacanciesCollection
+          .find(
+            where
+                .eq('company_id', ObjectId.fromHexString(companyId))
+                .sortBy('created_at', descending: true),
+          )
+          .toList();
+
+      return jobs.cast<Map<String, dynamic>>();
+    } catch (e) {
+      print('Gagal mengambil lowongan company: $e');
+      return [];
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getCompanyApplicants({
+    required String companyId,
+  }) async {
+    try {
+      await ensureConnected();
+
+      if (companyId.isEmpty) return [];
+
+      final applicants = await _jobApplicationsCollection
+          .find(
+            where
+                .eq('company_id', ObjectId.fromHexString(companyId))
+                .sortBy('created_at', descending: true),
+          )
+          .toList();
+
+      return applicants.cast<Map<String, dynamic>>();
+    } catch (e) {
+      print('Gagal mengambil pelamar company: $e');
       return [];
     }
   }
