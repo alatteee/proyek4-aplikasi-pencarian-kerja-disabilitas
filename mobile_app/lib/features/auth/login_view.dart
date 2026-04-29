@@ -5,6 +5,7 @@ import '../../core/widgets/custom_text_field.dart';
 import 'sign_up_view.dart';
 import 'auth_controller.dart';
 import '../home/home_page.dart'; // import page home (tujuan berhasil)
+import '../company/company_home_page.dart';
 
 class LoginView extends StatefulWidget {
   const LoginView({super.key});
@@ -40,10 +41,15 @@ class _LoginViewState extends State<LoginView> {
     // 3. Evaluasi
     if (user != null) {
       if (!mounted) return;
-      
-      // Langsung pindah ke Home Page dan picu animasi/bottomsheet di sana (HomePage mengatur animasinya)
+
+      final role = user['role']?.toString();
+
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => HomePage(userData: user, showSuccessDialog: true)),
+        MaterialPageRoute(
+          builder: (_) => role == 'company'
+              ? CompanyHomePage(userData: user, showSuccessDialog: true)
+              : HomePage(userData: user, showSuccessDialog: true),
+        ),
       );
     } else {
       if (!mounted) return;
