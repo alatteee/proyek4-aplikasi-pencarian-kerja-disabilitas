@@ -73,6 +73,8 @@ class _JobDetailPageState extends State<JobDetailPage> {
     }
 
     Widget jobHeader() {
+      final theme = Theme.of(context);
+      final isDark = theme.brightness == Brightness.dark;
       return Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -80,12 +82,12 @@ class _JobDetailPageState extends State<JobDetailPage> {
             height: 56,
             width: 56,
             decoration: BoxDecoration(
-              color: AppColors.primaryNavy.withOpacity(0.08),
+              color: isDark ? Colors.yellow.withOpacity(0.1) : AppColors.primaryNavy.withOpacity(0.08),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.headset_mic,
-              color: AppColors.primaryNavy,
+              color: theme.colorScheme.primary,
               size: 36,
             ),
           ),
@@ -96,48 +98,48 @@ class _JobDetailPageState extends State<JobDetailPage> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.primaryNavy,
+                    color: theme.textTheme.titleLarge?.color,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   company,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 15,
-                    color: AppColors.textGray,
+                    color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                   ),
                 ),
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.location_on,
                       size: 16,
-                      color: AppColors.textGray,
+                      color: isDark ? Colors.yellow : AppColors.textGray,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       location,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
-                        color: AppColors.textGray,
+                        color: isDark ? Colors.yellow : AppColors.textGray,
                       ),
                     ),
                     const SizedBox(width: 16),
-                    const Icon(
+                    Icon(
                       Icons.work,
                       size: 16,
-                      color: AppColors.textGray,
+                      color: isDark ? Colors.yellow : AppColors.textGray,
                     ),
                     const SizedBox(width: 4),
                     Text(
                       jobType,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
-                        color: AppColors.textGray,
+                        color: isDark ? Colors.yellow : AppColors.textGray,
                       ),
                     ),
                   ],
@@ -149,19 +151,22 @@ class _JobDetailPageState extends State<JobDetailPage> {
       );
     }
 
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: theme.appBarTheme.backgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.primaryNavy),
+          icon: Icon(Icons.arrow_back, color: theme.colorScheme.primary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Detail Lowongan',
           style: TextStyle(
-            color: AppColors.primaryNavy,
+            color: theme.colorScheme.primary,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -182,38 +187,38 @@ class _JobDetailPageState extends State<JobDetailPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Deskripsi Pekerjaan',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
-                        color: AppColors.primaryNavy,
+                        color: theme.colorScheme.primary,
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       description,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
-                        color: Colors.black87,
+                        color: theme.textTheme.bodyMedium?.color,
                         height: 1.5,
                       ),
                     ),
                     const SizedBox(height: 24),
-                    const Text(
+                    Text(
                       'Kualifikasi Pekerjaan',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
-                        color: AppColors.primaryNavy,
+                        color: theme.colorScheme.primary,
                       ),
                     ),
                     const SizedBox(height: 8),
                     if (qualifications.isEmpty)
-                      const Text(
+                      Text(
                         'Tidak ada kualifikasi.',
                         style: TextStyle(
-                          color: AppColors.textGray,
+                          color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
                           fontSize: 14,
                         ),
                       )
@@ -225,19 +230,19 @@ class _JobDetailPageState extends State<JobDetailPage> {
                               (q) => Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text(
+                                  Text(
                                     '• ',
                                     style: TextStyle(
                                       fontSize: 16,
-                                      color: Colors.black87,
+                                      color: theme.colorScheme.primary,
                                     ),
                                   ),
                                   Expanded(
                                     child: Text(
                                       q.toString(),
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 14,
-                                        color: Colors.black87,
+                                        color: theme.textTheme.bodyMedium?.color,
                                       ),
                                     ),
                                   ),
@@ -247,20 +252,20 @@ class _JobDetailPageState extends State<JobDetailPage> {
                             .toList(),
                       ),
                     const SizedBox(height: 24),
-                    const Text(
+                    Text(
                       'Fasilitas',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
-                        color: AppColors.primaryNavy,
+                        color: theme.colorScheme.primary,
                       ),
                     ),
                     const SizedBox(height: 8),
                     if (facilities.isEmpty)
-                      const Text(
+                      Text(
                         'Tidak ada fasilitas.',
                         style: TextStyle(
-                          color: AppColors.textGray,
+                          color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
                           fontSize: 14,
                         ),
                       )
@@ -276,24 +281,24 @@ class _JobDetailPageState extends State<JobDetailPage> {
                                   vertical: 10,
                                 ),
                                 decoration: BoxDecoration(
-                                  color:
-                                      AppColors.accentBlue.withOpacity(0.12),
+                                  color: theme.colorScheme.primary.withOpacity(0.12),
                                   borderRadius: BorderRadius.circular(12),
+                                  border: isDark ? Border.all(color: Colors.yellow.withOpacity(0.3)) : null,
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(
                                       getFacilityIcon(f.toString()),
-                                      color: AppColors.primaryNavy,
+                                      color: theme.colorScheme.primary,
                                       size: 22,
                                     ),
                                     const SizedBox(width: 8),
                                     Text(
                                       f.toString(),
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 13,
-                                        color: AppColors.primaryNavy,
+                                        color: theme.colorScheme.primary,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
@@ -320,10 +325,14 @@ class _JobDetailPageState extends State<JobDetailPage> {
                           );
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primaryNavy,
+                          backgroundColor: theme.colorScheme.primary,
+                          foregroundColor: isDark ? Colors.black : Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 18),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
+                            side: isDark
+                                ? const BorderSide(color: Colors.yellow)
+                                : BorderSide.none,
                           ),
                         ),
                         child: const Text(
@@ -331,7 +340,6 @@ class _JobDetailPageState extends State<JobDetailPage> {
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
                           ),
                         ),
                       ),

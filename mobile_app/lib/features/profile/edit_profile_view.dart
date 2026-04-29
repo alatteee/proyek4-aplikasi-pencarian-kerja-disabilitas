@@ -3,6 +3,8 @@ import '../../core/constants/app_colors.dart';
 import 'profile_controller.dart';
 import 'widgets/skill_chip.dart';
 import 'package:file_picker/file_picker.dart';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 
@@ -125,9 +127,14 @@ class _EditProfileViewState extends State<EditProfileView> {
     );
 
     if (pickedFile == null) return;
+    
+    // Read file as bytes
+    final bytes = await pickedFile.readAsBytes();
+    // Convert to base64
+    final base64String = base64Encode(bytes);
 
     setState(() {
-      _profilePhotoPath = pickedFile.path;
+      _profilePhotoPath = base64String;
     });
   }
 
@@ -179,13 +186,14 @@ class _EditProfileViewState extends State<EditProfileView> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Edit Profil', style: TextStyle(color: AppColors.primaryNavy, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
+        title: Text('Edit Profil', style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
+        backgroundColor: theme.appBarTheme.backgroundColor,
         elevation: 0,
-        iconTheme: const IconThemeData(color: AppColors.primaryNavy),
+        iconTheme: IconThemeData(color: theme.colorScheme.primary),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
@@ -203,20 +211,22 @@ class _EditProfileViewState extends State<EditProfileView> {
                         width: 96,
                         height: 96,
                         decoration: BoxDecoration(
-                          color: AppColors.accentBlue.withOpacity(0.3),
+                          color: theme.colorScheme.secondaryContainer,
                           borderRadius: BorderRadius.circular(24),
                           image: _profilePhotoPath != null && _profilePhotoPath!.isNotEmpty
                               ? DecorationImage(
-                                  image: FileImage(File(_profilePhotoPath!)),
+                                  image: _profilePhotoPath!.startsWith('/') 
+                                    ? FileImage(File(_profilePhotoPath!)) as ImageProvider
+                                    : MemoryImage(base64Decode(_profilePhotoPath!)),
                                   fit: BoxFit.cover,
                                 )
                               : null,
                         ),
                         child: _profilePhotoPath == null || _profilePhotoPath!.isEmpty
-                            ? const Icon(
+                            ? Icon(
                                 Icons.person,
                                 size: 56,
-                                color: AppColors.primaryNavy,
+                                color: theme.colorScheme.primary,
                               )
                             : null,
                       ),
@@ -226,13 +236,13 @@ class _EditProfileViewState extends State<EditProfileView> {
                         child: Container(
                           width: 30,
                           height: 30,
-                          decoration: const BoxDecoration(
-                            color: AppColors.primaryNavy,
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.camera_alt,
-                            color: Colors.white,
+                            color: theme.colorScheme.onPrimary,
                             size: 16,
                           ),
                         ),
@@ -261,16 +271,26 @@ class _EditProfileViewState extends State<EditProfileView> {
               _buildTextField('Deskripsi Disabilitas', _deskripsiController, maxLines: 3),
               
               const SizedBox(height: 16),
-              const Text('Kemampuan (Skills)', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
+              Text('Kemampuan (Skills)', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: theme.textTheme.titleMedium?.color)),
               const SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(
                     child: TextFormField(
                       controller: _skillController,
+                      style: TextStyle(color: theme.textTheme.bodyLarge?.color),
                       decoration: InputDecoration(
                         hintText: 'Tambahkan skill (mis: Microsoft Word)',
+                        hintStyle: TextStyle(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6)),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: theme.dividerColor),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: theme.colorScheme.primary),
+                        ),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       ),
                       onFieldSubmitted: (_) => _addSkill(),
@@ -280,11 +300,11 @@ class _EditProfileViewState extends State<EditProfileView> {
                   ElevatedButton(
                     onPressed: _addSkill,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryNavy,
+                      backgroundColor: theme.colorScheme.primary,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     ),
-                    child: const Icon(Icons.add, color: Colors.white),
+                    child: Icon(Icons.add, color: theme.colorScheme.onPrimary),
                   ),
                 ],
               ),
@@ -301,7 +321,7 @@ class _EditProfileViewState extends State<EditProfileView> {
               ),
 
               const SizedBox(height: 24),
-              const Text('CV', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
+              Text('CV', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: theme.textTheme.titleMedium?.color)),
               const SizedBox(height: 8),
               GestureDetector(
                 onTap: _pickCV,
@@ -309,31 +329,31 @@ class _EditProfileViewState extends State<EditProfileView> {
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(vertical: 20),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFF),
+                    color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: AppColors.primaryNavy.withOpacity(0.2),
-                      style: BorderStyle.solid, // Note: standard Flutter doesn't support dashed natively without custom painter, using solid with low opacity for similar feel
+                      color: theme.colorScheme.primary.withOpacity(0.2),
+                      style: BorderStyle.solid, 
                     ),
                   ),
                   child: Column(
                     children: [
-                      const Icon(Icons.cloud_upload_outlined, size: 32, color: AppColors.primaryNavy),
+                      Icon(Icons.cloud_upload_outlined, size: 32, color: theme.colorScheme.primary),
                       const SizedBox(height: 12),
                       Text(
                         _cvFileName ?? 'Upload / Ganti CV',
-                        style: const TextStyle(
-                          color: AppColors.primaryNavy,
+                        style: TextStyle(
+                          color: theme.colorScheme.primary,
                           fontWeight: FontWeight.w600,
                           fontSize: 14,
                         ),
                       ),
                       if (_cvFileName != null)
-                        const Padding(
-                          padding: EdgeInsets.only(top: 4.0),
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4.0),
                           child: Text(
                             'Klik untuk mengganti file',
-                            style: TextStyle(color: Colors.grey, fontSize: 11),
+                            style: TextStyle(color: theme.textTheme.bodySmall?.color, fontSize: 11),
                           ),
                         ),
                     ],
@@ -348,12 +368,13 @@ class _EditProfileViewState extends State<EditProfileView> {
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _saveProfile,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryNavy,
+                    backgroundColor: theme.colorScheme.primary,
+                    foregroundColor: theme.colorScheme.onPrimary,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   child: _isLoading 
-                    ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Text('Simpan Profil', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                    ? SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: theme.colorScheme.onPrimary, strokeWidth: 2))
+                    : const Text('Simpan Profil', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
               ),
               const SizedBox(height: 40),
@@ -365,24 +386,26 @@ class _EditProfileViewState extends State<EditProfileView> {
   }
 
   Widget _buildTextField(String label, TextEditingController controller, {int maxLines = 1, TextInputType? keyboardType, String? Function(String?)? validator}) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 20.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
+          Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: theme.textTheme.titleMedium?.color)),
           const SizedBox(height: 8),
           TextFormField(
             controller: controller,
             maxLines: maxLines,
             keyboardType: keyboardType,
             validator: validator,
+            style: TextStyle(color: theme.textTheme.bodyLarge?.color),
             decoration: InputDecoration(
               filled: true,
-              fillColor: Colors.grey.shade50,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.grey.shade300)),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.primaryNavy)),
+              fillColor: theme.brightness == Brightness.dark ? Colors.grey.shade900 : Colors.grey.shade50,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: theme.dividerColor)),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: theme.dividerColor)),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: theme.colorScheme.primary)),
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             ),
           ),
@@ -392,6 +415,7 @@ class _EditProfileViewState extends State<EditProfileView> {
   }
 
   Widget _buildDropdown(String label, List<String> options, String? value, void Function(String?) onChanged) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 24.0),
       child: Column(
@@ -401,10 +425,10 @@ class _EditProfileViewState extends State<EditProfileView> {
             padding: const EdgeInsets.only(left: 4.0),
             child: Text(
               label, 
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14, 
                 fontWeight: FontWeight.bold, 
-                color: AppColors.primaryNavy,
+                color: theme.colorScheme.primary,
                 letterSpacing: 0.5,
               )
             ),
@@ -415,24 +439,25 @@ class _EditProfileViewState extends State<EditProfileView> {
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.03),
+                  color: theme.brightness == Brightness.dark ? Colors.transparent : Colors.black.withOpacity(0.03),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
               ],
             ),
             child: DropdownButtonFormField<String>(
-              initialValue: value,
-              isExpanded: true, // Memastikan text tidak terpotong
+              value: value,
+              dropdownColor: theme.brightness == Brightness.dark ? Colors.grey.shade900 : Colors.white,
+              isExpanded: true, 
               items: options.map((o) => DropdownMenuItem(
                 value: o, 
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4.0),
                   child: Text(
                     o, 
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 15, 
-                      color: Colors.black87,
+                      color: theme.textTheme.bodyLarge?.color,
                       fontWeight: FontWeight.w500,
                     )
                   ),
@@ -444,44 +469,41 @@ class _EditProfileViewState extends State<EditProfileView> {
                 padding: const EdgeInsets.only(right: 8.0),
                 child: Icon(
                   Icons.expand_more_rounded, 
-                  color: AppColors.primaryNavy.withOpacity(0.8),
+                  color: theme.colorScheme.primary.withOpacity(0.8),
                   size: 28,
                 ),
               ),
-              dropdownColor: Colors.white,
               borderRadius: BorderRadius.circular(20),
               elevation: 16,
               menuMaxHeight: 350,
-              // Memberikan jarak horizontal antara menu popup dengan tepi layar
-              padding: const EdgeInsets.symmetric(horizontal: 12), 
               decoration: InputDecoration(
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: theme.brightness == Brightness.dark ? Colors.grey.shade900 : Colors.white,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
                 prefixIcon: Container(
                   margin: const EdgeInsets.only(left: 12, right: 12),
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppColors.accentBlue.withOpacity(0.1),
+                    color: theme.colorScheme.primary.withOpacity(0.1),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
                     label.contains('Kelamin') ? Icons.wc_rounded : Icons.accessibility_new_rounded,
-                    color: AppColors.primaryNavy,
+                    color: theme.colorScheme.primary,
                     size: 18,
                   ),
                 ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(color: Colors.grey.shade200),
+                  borderSide: BorderSide(color: theme.dividerColor),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide(color: Colors.grey.shade200),
+                  borderSide: BorderSide(color: theme.dividerColor),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: const BorderSide(color: AppColors.primaryNavy, width: 1.8),
+                  borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
                 ),
                 errorBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),

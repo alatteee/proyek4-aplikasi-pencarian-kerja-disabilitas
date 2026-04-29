@@ -106,6 +106,7 @@ class _ApplicationsPageState extends State<ApplicationsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -141,10 +142,10 @@ class _ApplicationsPageState extends State<ApplicationsPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (_isLoading)
-                    const Center(
+                    Center(
                       child: Padding(
-                        padding: EdgeInsets.only(top: 60),
-                        child: CircularProgressIndicator(color: AppColors.primaryNavy),
+                        padding: const EdgeInsets.only(top: 60),
+                        child: CircularProgressIndicator(color: theme.colorScheme.primary),
                       ),
                     )
                   else if (_filteredApplications.isEmpty)
@@ -153,8 +154,8 @@ class _ApplicationsPageState extends State<ApplicationsPage> {
                         padding: const EdgeInsets.only(top: 60),
                         child: Text(
                           'Belum ada lamaran ${_selectedStatus.toLowerCase()}',
-                          style: const TextStyle(
-                            color: AppColors.textGray,
+                          style: TextStyle(
+                            color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6) ?? AppColors.textGray,
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                           ),
@@ -196,20 +197,21 @@ class _StatusButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return GestureDetector(
       onTap: onTap,
       child: Container(
         height: 42,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primaryNavy : Colors.white,
+          color: isSelected ? theme.colorScheme.primary : theme.scaffoldBackgroundColor,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.primaryNavy, width: 1.2),
+          border: Border.all(color: theme.colorScheme.primary, width: 1.2),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isSelected ? Colors.white : AppColors.primaryNavy,
+            color: isSelected ? (theme.brightness == Brightness.dark ? Colors.black : Colors.white) : theme.colorScheme.primary,
             fontSize: 14,
             fontWeight: FontWeight.bold,
           ),
@@ -241,66 +243,80 @@ class _ApplicationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.brightness == Brightness.dark ? Colors.black : Colors.white,
         borderRadius: BorderRadius.circular(18),
-        boxShadow: const [
+        border: theme.brightness == Brightness.dark ? Border.all(color: Colors.yellow, width: 1) : null,
+        boxShadow: theme.brightness == Brightness.dark ? [] : [
           BoxShadow(
-            color: Colors.black12,
-            blurRadius: 10,
-            offset: Offset(0, 4),
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 47,
-            height: 47,
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.accentBlue.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(10),
+              color: theme.colorScheme.primary.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(_getIcon(), color: AppColors.primaryNavy, size: 32),
+            child: Icon(_getIcon(), color: theme.colorScheme.primary, size: 28),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.primaryNavy,
-                    fontSize: 18,
+                  style: TextStyle(
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
+                    color: theme.textTheme.titleLarge?.color,
                   ),
                 ),
-                const SizedBox(height: 5),
+                const SizedBox(height: 4),
                 Text(
                   company,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textGray,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                   ),
                 ),
-                const SizedBox(height: 15),
-                Text(
-                  '$statusLabel $dateText',
-                  style: const TextStyle(
-                    color: Colors.blue,
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                  ),
+                const SizedBox(height: 10),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        statusLabel,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      dateText,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: theme.textTheme.bodySmall?.color,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -310,3 +326,4 @@ class _ApplicationCard extends StatelessWidget {
     );
   }
 }
+

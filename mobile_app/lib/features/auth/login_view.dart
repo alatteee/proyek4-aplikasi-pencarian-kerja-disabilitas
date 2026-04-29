@@ -68,8 +68,11 @@ class _LoginViewState extends State<LoginView> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppColors.primaryNavy,
+      backgroundColor: isDark ? Colors.black : AppColors.primaryNavy,
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -80,15 +83,19 @@ class _LoginViewState extends State<LoginView> {
               padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
               child: GestureDetector(
                 onTap: () => Navigator.pop(context),
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 18),
-                    SizedBox(width: 8),
+                    Icon(
+                      Icons.arrow_back_ios_new,
+                      color: isDark ? Colors.yellow : Colors.white,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
                     Text(
                       'Back',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: isDark ? Colors.yellow : Colors.white,
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
@@ -105,12 +112,15 @@ class _LoginViewState extends State<LoginView> {
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.black : Colors.white,
+                  borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(40),
                     topRight: Radius.circular(40),
                   ),
+                  border: isDark ? const Border(
+                    top: BorderSide(color: Colors.yellow, width: 2),
+                  ) : null,
                 ),
                 child: SingleChildScrollView(
                   child: Column(
@@ -118,13 +128,13 @@ class _LoginViewState extends State<LoginView> {
                     children: [
                       const SizedBox(height: 48),
                       // Title
-                      const Text(
+                      Text(
                         'Welcome Back !',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.primaryNavy,
+                          color: isDark ? Colors.yellow : AppColors.primaryNavy,
                         ),
                       ),
                       const SizedBox(height: 48),
@@ -155,10 +165,10 @@ class _LoginViewState extends State<LoginView> {
                         alignment: Alignment.centerRight,
                         child: TextButton(
                           onPressed: () {},
-                          child: const Text(
+                          child: Text(
                             'Forgot Password?',
                             style: TextStyle(
-                              color: AppColors.textGray,
+                              color: isDark ? Colors.yellow : AppColors.textGray,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -173,15 +183,15 @@ class _LoginViewState extends State<LoginView> {
                         child: ElevatedButton(
                           onPressed: _isLoading ? null : _handleLogin,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primaryNavy,
-                            foregroundColor: Colors.white,
+                            backgroundColor: isDark ? Colors.yellow : AppColors.primaryNavy,
+                            foregroundColor: isDark ? Colors.black : Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                             ),
                             elevation: 0,
                           ),
                           child: _isLoading 
-                            ? const CircularProgressIndicator(color: Colors.white)
+                            ? CircularProgressIndicator(color: isDark ? Colors.black : Colors.white)
                             : const Text(
                                 'Log In',
                                 style: TextStyle(
@@ -198,10 +208,10 @@ class _LoginViewState extends State<LoginView> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text(
+                          Text(
                             "Don't Have An Account? ",
                             style: TextStyle(
-                              color: AppColors.textGray,
+                              color: isDark ? Colors.yellow : AppColors.textGray,
                               fontSize: 15,
                               fontWeight: FontWeight.w500,
                             ),
@@ -212,10 +222,10 @@ class _LoginViewState extends State<LoginView> {
                                 MaterialPageRoute(builder: (_) => const SignUpView()),
                               );
                             },
-                            child: const Text(
+                            child: Text(
                               "Sign Up",
                               style: TextStyle(
-                                color: AppColors.primaryNavy,
+                                color: isDark ? Colors.yellow : AppColors.primaryNavy,
                                 fontSize: 15,
                                 fontWeight: FontWeight.bold,
                               ),

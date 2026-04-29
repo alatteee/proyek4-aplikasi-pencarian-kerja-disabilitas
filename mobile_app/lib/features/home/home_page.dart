@@ -1,9 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
-import '../auth/login_view.dart';
 import '../../services/mongo_service.dart';
 import '../job_detail/job_detail_page.dart';
-import '../saved_jobs/saved_jobs_page.dart';
 import '../applications/applications_page.dart';
 import '../profile/profile_view.dart';
 
@@ -294,6 +292,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final List<Widget> pages = [
       _buildBeranda(context),
       ApplicationsPage(currentUser: widget.userData),
@@ -301,15 +300,15 @@ class _HomePageState extends State<HomePage> {
     ];
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: _selectedIndex == 0 ? _buildBerandaAppBar() : _buildOtherAppBar(),
       body: SafeArea(
         child: pages[_selectedIndex],
       ),
       bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: AppColors.primaryNavy,
-          borderRadius: BorderRadius.only(
+        decoration: BoxDecoration(
+          color: theme.brightness == Brightness.dark ? Colors.yellow : AppColors.primaryNavy,
+          borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(24),
             topRight: Radius.circular(24),
           ),
@@ -320,11 +319,11 @@ class _HomePageState extends State<HomePage> {
             topRight: Radius.circular(24),
           ),
           child: BottomNavigationBar(
-            backgroundColor: AppColors.primaryNavy,
+            backgroundColor: theme.brightness == Brightness.dark ? Colors.yellow : AppColors.primaryNavy,
             elevation: 0,
             type: BottomNavigationBarType.fixed,
-            selectedItemColor: Colors.white,
-            unselectedItemColor: Colors.white70,
+            selectedItemColor: theme.brightness == Brightness.dark ? Colors.black : Colors.white,
+            unselectedItemColor: theme.brightness == Brightness.dark ? Colors.black.withOpacity(0.6) : Colors.white70,
             currentIndex: _selectedIndex,
             onTap: _onItemTapped,
             items: const [
@@ -339,26 +338,27 @@ class _HomePageState extends State<HomePage> {
   }
 
   AppBar _buildBerandaAppBar() {
+    final theme = Theme.of(context);
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.appBarTheme.backgroundColor,
       elevation: 0,
       toolbarHeight: 60,
       automaticallyImplyLeading: false,
       title: RichText(
-        text: const TextSpan(
-          style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+        text: TextSpan(
+          style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
           children: [
-            TextSpan(text: 'Job', style: TextStyle(color: AppColors.primaryNavy)),
-            TextSpan(text: 'Able', style: TextStyle(color: AppColors.accentBlue)),
+            TextSpan(text: 'Job', style: TextStyle(color: theme.colorScheme.primary)),
+            TextSpan(text: 'Able', style: TextStyle(color: theme.brightness == Brightness.dark ? Colors.yellow : AppColors.accentBlue)),
           ],
         ),
       ),
       actions: [
         IconButton(
           onPressed: () {},
-          icon: const Icon(
+          icon: Icon(
             Icons.notifications,
-            color: AppColors.primaryNavy,
+            color: theme.colorScheme.primary,
             size: 30,
           ),
         ),
@@ -368,17 +368,18 @@ class _HomePageState extends State<HomePage> {
   }
 
   AppBar _buildOtherAppBar() {
+    final theme = Theme.of(context);
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.appBarTheme.backgroundColor,
       elevation: 0,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: AppColors.primaryNavy),
+        icon: Icon(Icons.arrow_back, color: theme.colorScheme.primary),
         onPressed: () => setState(() => _selectedIndex = 0),
       ),
       title: Text(
         _selectedIndex == 1 ? 'Lamaran Saya' : 'Profil Saya',
-        style: const TextStyle(
-          color: AppColors.primaryNavy,
+        style: TextStyle(
+          color: theme.colorScheme.primary,
           fontWeight: FontWeight.bold,
           fontSize: 20,
         ),
@@ -388,8 +389,9 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildBeranda(BuildContext context) {
+    final theme = Theme.of(context);
     return RefreshIndicator(
-      color: AppColors.primaryNavy,
+      color: theme.colorScheme.primary,
       onRefresh: fetchJobs,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -399,29 +401,31 @@ class _HomePageState extends State<HomePage> {
           children: [
             Text(
               'Halo, ${widget.userData['username'] ?? 'User'}. ${_getGreeting()}!',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: Colors.black87,
+                color: theme.textTheme.bodyLarge?.color,
               ),
             ),
             const SizedBox(height: 20),
             Container(
               decoration: BoxDecoration(
+                color: theme.brightness == Brightness.dark ? Colors.black : Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade300),
+                border: Border.all(color: theme.dividerColor),
               ),
               child: TextField(
                 controller: _searchController,
+                style: TextStyle(color: theme.textTheme.bodyLarge?.color),
                 onChanged: (value) {
                   searchQuery = value;
                   applyFilters();
                 },
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: 'Cari Lowongan Pekerjaan...',
-                  hintStyle: TextStyle(color: AppColors.textGray),
+                  hintStyle: TextStyle(color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6)),
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 ),
               ),
             ),
@@ -482,19 +486,19 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
             const SizedBox(height: 32),
-            const Text(
+            Text(
               'Lowongan Terbaru',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: Colors.black87,
+                color: theme.textTheme.titleLarge?.color,
               ),
             ),
             const SizedBox(height: 16),
             if (isLoading)
-              const Center(child: CircularProgressIndicator())
+              Center(child: CircularProgressIndicator(color: theme.colorScheme.primary))
             else if (filteredJobs.isEmpty)
-              const Center(child: Text('Belum ada lowongan'))
+              Center(child: Text('Belum ada lowongan', style: TextStyle(color: theme.textTheme.bodyMedium?.color)))
             else
               ...filteredJobs.map(
                 (job) {
@@ -536,62 +540,6 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-class _ProfileMenuCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _ProfileMenuCard({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 4,
-            offset: Offset(0, 2),
-            spreadRadius: 0,
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-            child: Row(
-              children: [
-                Icon(icon, color: AppColors.primaryNavy, size: 24),
-                const SizedBox(width: 16),
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _CategoryButton extends StatelessWidget {
   final String title;
   final bool isSelected;
@@ -600,20 +548,29 @@ class _CategoryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
-        color: isSelected ? AppColors.primaryNavy : Colors.transparent,
+        color: isSelected
+            ? theme.colorScheme.primary
+            : (isDark ? Colors.black : Colors.transparent),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isSelected ? AppColors.primaryNavy : Colors.grey.shade400,
+          color: isSelected
+              ? theme.colorScheme.primary
+              : (isDark ? Colors.yellow : Colors.grey.shade400),
         ),
       ),
       alignment: Alignment.center,
       child: Text(
         title,
         style: TextStyle(
-          color: isSelected ? Colors.white : Colors.black87,
+          color: isSelected
+              ? (isDark ? Colors.black : Colors.white)
+              : (isDark ? Colors.yellow : Colors.black87),
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -644,55 +601,73 @@ class _JobCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? Colors.black : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.grey.shade200),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4)),
-        ],
+        border: Border.all(color: isDark ? Colors.yellow : Colors.grey.shade200),
+        boxShadow: isDark
+            ? null
+            : const [
+                BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 4)),
+              ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.black87,
+              color: isDark ? Colors.yellow : Colors.black87,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             company,
-            style: const TextStyle(color: AppColors.textGray, fontSize: 14),
+            style: TextStyle(
+              color: isDark ? Colors.yellow.withOpacity(0.7) : AppColors.textGray,
+              fontSize: 14,
+            ),
           ),
           const SizedBox(height: 12),
           Row(
             children: [
-              const Icon(Icons.location_on, size: 16, color: AppColors.textGray),
+              Icon(Icons.location_on,
+                  size: 16, color: isDark ? Colors.yellow : AppColors.textGray),
               const SizedBox(width: 4),
               Text(
                 location,
-                style: const TextStyle(color: AppColors.textGray, fontSize: 13),
+                style: TextStyle(
+                  color: isDark ? Colors.yellow : AppColors.textGray,
+                  fontSize: 13,
+                ),
               ),
               const SizedBox(width: 16),
-              const Icon(Icons.work, size: 16, color: AppColors.textGray),
+              Icon(Icons.work,
+                  size: 16, color: isDark ? Colors.yellow : AppColors.textGray),
               const SizedBox(width: 4),
               Text(
                 type,
-                style: const TextStyle(color: AppColors.textGray, fontSize: 13),
+                style: TextStyle(
+                  color: isDark ? Colors.yellow : AppColors.textGray,
+                  fontSize: 13,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 16),
           Text(
             desc,
-            style: const TextStyle(
-              color: AppColors.textGray,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: isDark ? Colors.yellow.withOpacity(0.8) : AppColors.textGray,
               fontSize: 12,
               height: 1.4,
             ),
@@ -705,8 +680,8 @@ class _JobCard extends StatelessWidget {
                   onPressed: onDetail,
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    foregroundColor: Colors.black87,
-                    side: const BorderSide(color: Colors.black87),
+                    foregroundColor: isDark ? Colors.yellow : Colors.black87,
+                    side: BorderSide(color: isDark ? Colors.yellow : Colors.black87),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -724,7 +699,9 @@ class _JobCard extends StatelessWidget {
                   icon: Icon(
                     isSaved ? Icons.bookmark : Icons.bookmark_border,
                     size: 16,
-                    color: isSaved ? Colors.white : Colors.black87,
+                    color: isSaved
+                        ? (isDark ? Colors.black : Colors.white)
+                        : (isDark ? Colors.yellow : Colors.black87),
                   ),
                   label: Flexible(
                     child: Text(
@@ -732,7 +709,9 @@ class _JobCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        color: isSaved ? Colors.white : Colors.black87,
+                        color: isSaved
+                            ? (isDark ? Colors.black : Colors.white)
+                            : (isDark ? Colors.yellow : Colors.black87),
                       ),
                       textAlign: TextAlign.center,
                       overflow: TextOverflow.ellipsis,
@@ -741,11 +720,13 @@ class _JobCard extends StatelessWidget {
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
                     elevation: 0,
-                    backgroundColor: isSaved ? AppColors.primaryNavy : Colors.transparent,
+                    backgroundColor: isSaved
+                        ? (isDark ? Colors.yellow : AppColors.primaryNavy)
+                        : Colors.transparent,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                       side: BorderSide(
-                        color: isSaved ? AppColors.primaryNavy : Colors.black87,
+                        color: isDark ? Colors.yellow : (isSaved ? AppColors.primaryNavy : Colors.black87),
                       ),
                     ),
                   ),
