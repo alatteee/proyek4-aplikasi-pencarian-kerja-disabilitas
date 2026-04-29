@@ -25,19 +25,22 @@ class HelpView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: theme.appBarTheme.backgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.primaryNavy),
+          icon: Icon(Icons.arrow_back, color: theme.colorScheme.primary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Bantuan',
           style: TextStyle(
-            color: AppColors.primaryNavy,
+            color: theme.colorScheme.primary,
             fontWeight: FontWeight.bold,
             fontSize: 20,
           ),
@@ -49,85 +52,89 @@ class HelpView extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Temukan informasi dan bantuan untuk menggunakan aplikasi JobAble',
               style: TextStyle(
                 fontSize: 16,
-                color: Color(0xFF6B7280), // Modern gray
+                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                 height: 1.5,
               ),
             ),
             const SizedBox(height: 32),
             _buildHelpCard(
+              context,
               icon: Icons.help_outline,
               title: 'Cara Menggunakan',
               subtitle: 'Ikuti langkah - langkah berikut untuk menggunakan aplikasi JobAble',
               isExpanded: true,
               children: [
-                _buildStepItem('1.', 'Login atau daftar akun'),
-                _buildStepItem('2.', 'Lengkapi profil anda'),
-                _buildStepItem('3.', 'Cari lowongan pekerjaan'),
-                _buildStepItem('4.', 'Kirim lamaran pekerjaan'),
+                _buildStepItem(context, '1.', 'Login atau daftar akun'),
+                _buildStepItem(context, '2.', 'Lengkapi profil anda'),
+                _buildStepItem(context, '3.', 'Cari lowongan pekerjaan'),
+                _buildStepItem(context, '4.', 'Kirim lamaran pekerjaan'),
               ],
             ),
             const SizedBox(height: 16),
             _buildHelpCard(
+              context,
               icon: Icons.description_outlined,
               title: 'Cara Melamar Pekerjaan',
               subtitle: 'Pelajari langkah-langkah melamar pekerjaan melalui aplikasi',
               children: [
-                _buildStepItem('1.', 'Buka tab Beranda atau Cari Lowongan'),
-                _buildStepItem('2.', 'Pilih lowongan yang sesuai minat Anda'),
-                _buildStepItem('3.', 'Klik tombol "Lamar Sekarang"'),
-                _buildStepItem('4.', 'Tunggu konfirmasi dari pihak perusahaan'),
+                _buildStepItem(context, '1.', 'Buka tab Beranda atau Cari Lowongan'),
+                _buildStepItem(context, '2.', 'Pilih lowongan yang sesuai minat Anda'),
+                _buildStepItem(context, '3.', 'Klik tombol "Lamar Sekarang"'),
+                _buildStepItem(context, '4.', 'Tunggu konfirmasi dari pihak perusahaan'),
               ],
             ),
             const SizedBox(height: 16),
             _buildHelpCard(
+              context,
               icon: Icons.accessibility_new_outlined,
               title: 'Pengaturan Aksesibilitas',
               subtitle: 'Sesuaikan aplikasi agar lebih mudah digunakan sesuai kebutuhan anda.',
               children: [
-                _buildStepItem('•', 'Gunakan fitur Screen Reader untuk tunanetra'),
-                _buildStepItem('•', 'Aktifkan High Contrast untuk penglihatan rendah'),
-                _buildStepItem('•', 'Sesuaikan ukuran font di Pengaturan Akun'),
+                _buildStepItem(context, '•', 'Gunakan fitur Screen Reader untuk tunanetra'),
+                _buildStepItem(context, '•', 'Aktifkan High Contrast untuk penglihatan rendah'),
+                _buildStepItem(context, '•', 'Sesuaikan ukuran font di Pengaturan Akun'),
               ],
             ),
             const SizedBox(height: 16),
             _buildHelpCard(
+              context,
               icon: Icons.phone_in_talk_outlined,
               title: 'Hubungi Kami',
               subtitle: 'Butuh bantuan lebih lanjut? Hubungi tim kami melalui kontak berikut.',
               children: [
-                _buildStepItem('Email', 'azkha.nazzala.tif24@polban.ac.id'),
-                _buildStepItem('WA', '082119765944'),
+                _buildStepItem(context, 'Email', 'azkha.nazzala.tif24@polban.ac.id'),
+                _buildStepItem(context, 'WA', '082119765944'),
               ],
             ),
             const SizedBox(height: 32),
             
-            // Footer Contact Section (New)
+            // Footer Contact Section
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: const Color(0xFFF3F6FF),
+                color: isDark ? Colors.black : const Color(0xFFF3F6FF),
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: const Color(0xFFE0E7FF)),
+                border: Border.all(color: isDark ? Colors.yellow : const Color(0xFFE0E7FF)),
               ),
               child: Column(
                 children: [
-                   const Text(
+                  Text(
                     'Masih butuh bantuan?',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.primaryNavy,
+                      color: theme.colorScheme.primary,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
+                  Text(
                     'Tim kami siap membantu Anda kapan saja melalui email atau formulir kontak.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 13, color: Colors.grey, height: 1.4),
+                    style: TextStyle(fontSize: 13, color: theme.textTheme.bodySmall?.color, height: 1.4),
                   ),
                   const SizedBox(height: 20),
                   Row(
@@ -138,8 +145,8 @@ class HelpView extends StatelessWidget {
                           icon: const Icon(Icons.email_outlined, size: 18),
                           label: const Text('Email Kami', style: TextStyle(fontSize: 12)),
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.primaryNavy,
-                            side: const BorderSide(color: AppColors.primaryNavy),
+                            foregroundColor: theme.colorScheme.primary,
+                            side: BorderSide(color: theme.colorScheme.primary),
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
@@ -152,8 +159,8 @@ class HelpView extends StatelessWidget {
                           icon: const Icon(Icons.chat_bubble_outline, size: 18),
                           label: const Text('Formulir Kontak', style: TextStyle(fontSize: 12)),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primaryNavy,
-                            foregroundColor: Colors.white,
+                            backgroundColor: theme.colorScheme.primary,
+                            foregroundColor: isDark ? Colors.black : Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 12),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             elevation: 0,
@@ -172,57 +179,61 @@ class HelpView extends StatelessWidget {
     );
   }
 
-  Widget _buildHelpCard({
+  Widget _buildHelpCard(
+    BuildContext context, {
     required IconData icon,
     required String title,
     required String subtitle,
     bool isExpanded = false,
     List<Widget>? children,
   }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? Colors.black : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
+        boxShadow: isDark ? [] : [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 15,
             offset: const Offset(0, 4),
           ),
         ],
-        border: Border.all(color: Colors.grey.shade100),
+        border: Border.all(color: isDark ? Colors.yellow : Colors.grey.shade100),
       ),
       child: Theme(
-        data: ThemeData().copyWith(dividerColor: Colors.transparent),
+        data: theme.copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
           initiallyExpanded: isExpanded,
           leading: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: const Color(0xFFE0E7FF), // Soft blue
+              color: theme.colorScheme.primary.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: AppColors.primaryNavy),
+            child: Icon(icon, color: theme.colorScheme.primary),
           ),
           title: Text(
             title,
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.bold,
-              color: AppColors.primaryNavy,
+              color: theme.colorScheme.primary,
               fontSize: 16,
             ),
           ),
           subtitle: Text(
             subtitle,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
-              color: Colors.grey,
+              color: theme.textTheme.bodySmall?.color,
               height: 1.4,
             ),
           ),
           trailing: Icon(
             isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-            color: AppColors.primaryNavy,
+            color: theme.colorScheme.primary,
           ),
           children: children ?? [],
         ),
@@ -230,7 +241,8 @@ class HelpView extends StatelessWidget {
     );
   }
 
-  Widget _buildStepItem(String number, String text) {
+  Widget _buildStepItem(BuildContext context, String number, String text) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(left: 72, right: 24, bottom: 16),
       child: Column(
@@ -240,15 +252,14 @@ class HelpView extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEEF2FF),
+                  color: theme.colorScheme.primary.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
                   number,
-                  style: const TextStyle(
-                    color: AppColors.primaryNavy,
+                  style: TextStyle(
+                    color: theme.colorScheme.primary,
                     fontWeight: FontWeight.bold,
-                    fontSize: 13,
                   ),
                 ),
               ),
@@ -256,20 +267,15 @@ class HelpView extends StatelessWidget {
               Expanded(
                 child: Text(
                   text,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
-                    color: AppColors.primaryNavy,
-                    fontWeight: FontWeight.w500,
+                    color: theme.textTheme.bodyMedium?.color,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
             ],
           ),
-          if (number != '4.') // Divider for items except the last one
-            Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Divider(color: Colors.grey.shade200, thickness: 1),
-            ),
         ],
       ),
     );

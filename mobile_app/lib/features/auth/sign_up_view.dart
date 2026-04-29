@@ -108,8 +108,11 @@ class _SignUpViewState extends State<SignUpView> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppColors.primaryNavy,
+      backgroundColor: isDark ? Colors.black : AppColors.primaryNavy,
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -120,15 +123,19 @@ class _SignUpViewState extends State<SignUpView> {
               padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
               child: GestureDetector(
                 onTap: () => Navigator.pop(context),
-                child: const Row(
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 18),
-                    SizedBox(width: 8),
+                    Icon(
+                      Icons.arrow_back_ios_new,
+                      color: isDark ? Colors.yellow : Colors.white,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
                     Text(
                       'Back',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: isDark ? Colors.yellow : Colors.white,
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
@@ -145,12 +152,15 @@ class _SignUpViewState extends State<SignUpView> {
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.black : Colors.white,
+                  borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(40),
                     topRight: Radius.circular(40),
                   ),
+                  border: isDark ? const Border(
+                    top: BorderSide(color: Colors.yellow, width: 2),
+                  ) : null,
                 ),
                 child: SingleChildScrollView(
                   child: Column(
@@ -158,24 +168,24 @@ class _SignUpViewState extends State<SignUpView> {
                     children: [
                       const SizedBox(height: 48),
                       // Title
-                      const Text(
+                      Text(
                         'Create Your Account!',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 26,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.primaryNavy,
+                          color: isDark ? Colors.yellow : AppColors.primaryNavy,
                         ),
                       ),
                       const SizedBox(height: 32),
                       
                       // Choose account type
-                      const Text(
+                      Text(
                         'Choose account type',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.primaryNavy,
+                          color: isDark ? Colors.yellow : AppColors.primaryNavy,
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -261,15 +271,15 @@ class _SignUpViewState extends State<SignUpView> {
                         child: ElevatedButton(
                           onPressed: _isLoading ? null : _handleSignUp,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primaryNavy,
-                            foregroundColor: Colors.white,
+                            backgroundColor: isDark ? Colors.yellow : AppColors.primaryNavy,
+                            foregroundColor: isDark ? Colors.black : Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16),
                             ),
                             elevation: 0,
                           ),
                           child: _isLoading 
-                            ? const CircularProgressIndicator(color: Colors.white)
+                            ? CircularProgressIndicator(color: isDark ? Colors.black : Colors.white)
                             : const Text(
                                 'Sign Up',
                                 style: TextStyle(
@@ -286,10 +296,10 @@ class _SignUpViewState extends State<SignUpView> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Text(
+                          Text(
                             "Already Have An Account? ",
                             style: TextStyle(
-                              color: AppColors.textGray,
+                              color: isDark ? Colors.yellow : AppColors.textGray,
                               fontSize: 15,
                               fontWeight: FontWeight.w500,
                             ),
@@ -300,10 +310,10 @@ class _SignUpViewState extends State<SignUpView> {
                                 MaterialPageRoute(builder: (_) => const LoginView()),
                               );
                             },
-                            child: const Text(
+                            child: Text(
                               "Log In",
                               style: TextStyle(
-                                color: AppColors.primaryNavy,
+                                color: isDark ? Colors.yellow : AppColors.primaryNavy,
                                 fontSize: 15,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -339,13 +349,18 @@ class _AccountTypeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
       decoration: BoxDecoration(
-        color: isSelected ? AppColors.primaryNavy : Colors.white,
+        color: isSelected 
+            ? (isDark ? Colors.yellow : AppColors.primaryNavy) 
+            : (isDark ? Colors.black : Colors.white),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: AppColors.primaryNavy,
+          color: isDark ? Colors.yellow : AppColors.primaryNavy,
           width: 1.5,
         ),
       ),
@@ -354,13 +369,17 @@ class _AccountTypeCard extends StatelessWidget {
           Icon(
             icon,
             size: 40,
-            color: isSelected ? Colors.white : AppColors.primaryNavy,
+            color: isSelected 
+                ? (isDark ? Colors.black : Colors.white) 
+                : (isDark ? Colors.yellow : AppColors.primaryNavy),
           ),
           const SizedBox(height: 12),
           Text(
             title,
             style: TextStyle(
-              color: isSelected ? Colors.white : AppColors.primaryNavy,
+              color: isSelected 
+                  ? (isDark ? Colors.black : Colors.white) 
+                  : (isDark ? Colors.yellow : AppColors.primaryNavy),
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
@@ -369,7 +388,9 @@ class _AccountTypeCard extends StatelessWidget {
           Text(
             subtitle,
             style: TextStyle(
-              color: isSelected ? Colors.white70 : AppColors.textGray,
+              color: isSelected 
+                  ? (isDark ? Colors.black87 : Colors.white70) 
+                  : (isDark ? Colors.yellow.withOpacity(0.7) : AppColors.textGray),
               fontSize: 11,
               fontWeight: FontWeight.w500,
             ),

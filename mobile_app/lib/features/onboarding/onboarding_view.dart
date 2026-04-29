@@ -53,9 +53,12 @@ class _OnboardingViewState extends State<OnboardingView> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final bool isLastPage = _currentPage == _onboardingData.length - 1;
 
     return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -63,10 +66,10 @@ class _OnboardingViewState extends State<OnboardingView> {
               alignment: Alignment.topRight,
               child: TextButton(
                 onPressed: _onSkip,
-                child: const Text(
+                child: Text(
                   'Lewati',
                   style: TextStyle(
-                    color: AppColors.primaryNavy,
+                    color: isDark ? Colors.yellow : AppColors.primaryNavy,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -117,12 +120,13 @@ class _OnboardingViewState extends State<OnboardingView> {
                           );
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.lightGrayBtn,
-                          foregroundColor: AppColors.primaryNavy,
+                          backgroundColor: isDark ? Colors.black : AppColors.lightGrayBtn,
+                          foregroundColor: isDark ? Colors.yellow : AppColors.primaryNavy,
                           elevation: 0,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(30),
+                            side: isDark ? const BorderSide(color: Colors.yellow) : BorderSide.none,
                           ),
                         ),
                         child: const Text(
@@ -141,12 +145,13 @@ class _OnboardingViewState extends State<OnboardingView> {
                           );
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.lightGrayBtn,
-                          foregroundColor: AppColors.primaryNavy,
+                          backgroundColor: isDark ? Colors.black : AppColors.lightGrayBtn,
+                          foregroundColor: isDark ? Colors.yellow : AppColors.primaryNavy,
                           elevation: 0,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(30),
+                            side: isDark ? const BorderSide(color: Colors.yellow) : BorderSide.none,
                           ),
                         ),
                         child: const Text(
@@ -171,8 +176,8 @@ class _OnboardingViewState extends State<OnboardingView> {
                         }
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryNavy,
-                        foregroundColor: Colors.white,
+                        backgroundColor: isDark ? Colors.yellow : AppColors.primaryNavy,
+                        foregroundColor: isDark ? Colors.black : Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(30),

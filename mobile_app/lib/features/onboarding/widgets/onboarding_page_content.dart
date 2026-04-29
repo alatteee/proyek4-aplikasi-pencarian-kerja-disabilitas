@@ -17,6 +17,9 @@ class OnboardingPageContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0),
       child: Column(
@@ -25,12 +28,12 @@ class OnboardingPageContent extends StatelessWidget {
           if (isFirstPage)
             RichText(
               textAlign: TextAlign.center,
-              text: const TextSpan(
-                style: TextStyle(fontSize: 38, fontWeight: FontWeight.bold, height: 1.3),
+              text: TextSpan(
+                style: const TextStyle(fontSize: 38, fontWeight: FontWeight.bold, height: 1.3),
                 children: [
-                  TextSpan(text: 'Welcome To\n', style: TextStyle(color: AppColors.primaryNavy)),
-                  TextSpan(text: 'Job', style: TextStyle(color: AppColors.primaryNavy)),
-                  TextSpan(text: 'Able', style: TextStyle(color: AppColors.accentBlue)),
+                  TextSpan(text: 'Welcome To\n', style: TextStyle(color: isDark ? Colors.yellow : AppColors.primaryNavy)),
+                  TextSpan(text: 'Job', style: TextStyle(color: isDark ? Colors.yellow : AppColors.primaryNavy)),
+                  TextSpan(text: 'Able', style: TextStyle(color: isDark ? Colors.yellow.withOpacity(0.8) : AppColors.accentBlue)),
                 ],
               ),
             )
@@ -38,10 +41,10 @@ class OnboardingPageContent extends StatelessWidget {
             Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
-                color: AppColors.primaryNavy,
+                color: isDark ? Colors.yellow : AppColors.primaryNavy,
                 height: 1.3,
               ),
             ),
@@ -51,9 +54,9 @@ class OnboardingPageContent extends StatelessWidget {
             Text(
               description,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
-                color: AppColors.textGray,
+                color: isDark ? Colors.yellow.withOpacity(0.8) : AppColors.textGray,
                 fontWeight: FontWeight.w500,
                 height: 1.5,
               ),

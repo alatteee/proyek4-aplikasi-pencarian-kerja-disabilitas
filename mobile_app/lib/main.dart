@@ -50,6 +50,19 @@ class JobAbleApp extends StatelessWidget {
                   : ThemeData(
                       scaffoldBackgroundColor: Colors.white,
                       primaryColor: AppColors.primaryNavy,
+                      colorScheme: ColorScheme.fromSeed(
+                        seedColor: AppColors.primaryNavy,
+                        primary: AppColors.primaryNavy,
+                        secondary: AppColors.accentBlue,
+                        surface: Colors.white,
+                        onPrimary: Colors.white,
+                        onSurface: AppColors.primaryNavy,
+                      ),
+                      appBarTheme: const AppBarTheme(
+                        backgroundColor: Colors.white,
+                        foregroundColor: AppColors.primaryNavy,
+                        elevation: 0,
+                      ),
                       useMaterial3: true,
                     ),
               home: const SplashView(),

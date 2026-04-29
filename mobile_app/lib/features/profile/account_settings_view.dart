@@ -17,19 +17,22 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: theme.appBarTheme.backgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.primaryNavy),
+          icon: Icon(Icons.arrow_back, color: theme.colorScheme.primary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Pengaturan Akun',
           style: TextStyle(
-            color: AppColors.primaryNavy,
+            color: theme.colorScheme.primary,
             fontWeight: FontWeight.bold,
             fontSize: 20,
           ),
@@ -41,32 +44,32 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Ubah Kata Sandi',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: AppColors.primaryNavy,
+                color: theme.colorScheme.primary,
               ),
             ),
             const SizedBox(height: 16),
             Container(
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: isDark ? Colors.black : Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: [
+                boxShadow: isDark ? [] : [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.05),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
                 ],
-                border: Border.all(color: Colors.grey.shade100),
+                border: Border.all(color: isDark ? Colors.yellow : Colors.grey.shade100),
               ),
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  const Icon(Icons.vpn_key_outlined, color: AppColors.primaryNavy),
+                  Icon(Icons.vpn_key_outlined, color: theme.colorScheme.primary),
                   const SizedBox(width: 16),
                   Expanded(
                     child: TextField(
@@ -78,10 +81,10 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
                         isDense: true,
                         contentPadding: EdgeInsets.zero,
                       ),
-                      style: const TextStyle(
+                      style: TextStyle(
                         letterSpacing: 2,
                         fontSize: 18,
-                        color: Colors.grey,
+                        color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
                       ),
                     ),
                   ),
@@ -93,10 +96,13 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
                         _showChangePasswordDialog(context);
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryNavy,
-                        foregroundColor: Colors.white,
+                        backgroundColor: theme.colorScheme.primary,
+                        foregroundColor: isDark ? Colors.black : Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
+                          side: isDark
+                              ? const BorderSide(color: Colors.yellow)
+                              : BorderSide.none,
                         ),
                         elevation: 0,
                         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -117,6 +123,9 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
   }
 
   void _showChangePasswordDialog(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     final TextEditingController oldPassController = TextEditingController();
     final TextEditingController newPassController = TextEditingController();
     final TextEditingController confirmPassController = TextEditingController();
@@ -128,132 +137,143 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (builderContext) => StatefulBuilder(
-        builder: (context, setModalState) {
-          return Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-            ),
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom + 32,
-              left: 24,
-              right: 24,
-              top: 32,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Ubah Kata Sandi',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primaryNavy,
+      builder: (builderContext) => StatefulBuilder(builder: (context, setModalState) {
+        return Container(
+          decoration: BoxDecoration(
+            color: isDark ? Colors.black : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            border: isDark ? Border.all(color: Colors.yellow) : null,
+          ),
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom + 32,
+            left: 24,
+            right: 24,
+            top: 32,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Ubah Kata Sandi',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+              const SizedBox(height: 24),
+              _buildPasswordField(
+                context,
+                label: 'Kata Sandi Lama',
+                controller: oldPassController,
+                isObscured: obscureOld,
+                onToggle: () => setModalState(() => obscureOld = !obscureOld),
+              ),
+              const SizedBox(height: 16),
+              _buildPasswordField(
+                context,
+                label: 'Kata Sandi Baru',
+                controller: newPassController,
+                isObscured: obscureNew,
+                onToggle: () => setModalState(() => obscureNew = !obscureNew),
+              ),
+              const SizedBox(height: 16),
+              _buildPasswordField(
+                context,
+                label: 'Konfirmasi Kata Sandi Baru',
+                controller: confirmPassController,
+                isObscured: obscureConfirm,
+                onToggle: () => setModalState(() => obscureConfirm = !obscureConfirm),
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                height: 54,
+                child: ElevatedButton(
+                  onPressed: () {
+                    if (newPassController.text != confirmPassController.text) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Konfirmasi password tidak cocok')),
+                      );
+                      return;
+                    }
+                    if (newPassController.text.isEmpty || oldPassController.text.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Semua field harus diisi')),
+                      );
+                      return;
+                    }
+                    _showConfirmUpdateDialog(context, oldPassController.text, newPassController.text);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: theme.colorScheme.primary,
+                    foregroundColor: isDark ? Colors.black : Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    'Simpan Perubahan',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                 ),
-                const SizedBox(height: 24),
-                _buildPasswordField(
-                  label: 'Kata Sandi Lama', 
-                  controller: oldPassController,
-                  isObscured: obscureOld,
-                  onToggle: () => setModalState(() => obscureOld = !obscureOld),
-                ),
-                const SizedBox(height: 16),
-                _buildPasswordField(
-                  label: 'Kata Sandi Baru', 
-                  controller: newPassController,
-                  isObscured: obscureNew,
-                  onToggle: () => setModalState(() => obscureNew = !obscureNew),
-                ),
-                const SizedBox(height: 16),
-                _buildPasswordField(
-                  label: 'Konfirmasi Kata Sandi Baru', 
-                  controller: confirmPassController,
-                  isObscured: obscureConfirm,
-                  onToggle: () => setModalState(() => obscureConfirm = !obscureConfirm),
-                ),
-                const SizedBox(height: 32),
-                SizedBox(
-                  width: double.infinity,
-                  height: 54,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      if (newPassController.text != confirmPassController.text) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Konfirmasi password tidak cocok')),
-                        );
-                        return;
-                      }
-                      if (newPassController.text.isEmpty || oldPassController.text.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Semua field harus diisi')),
-                        );
-                        return;
-                      }
-                      _showConfirmUpdateDialog(context, oldPassController.text, newPassController.text);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryNavy,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      'Simpan Perubahan',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-      ),
+              ),
+            ],
+          ),
+        );
+      }),
     );
   }
 
-  Widget _buildPasswordField({
-    required String label, 
+  Widget _buildPasswordField(
+    BuildContext context, {
+    required String label,
     required TextEditingController controller,
     required bool isObscured,
     required VoidCallback onToggle,
   }) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey),
+          style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: theme.textTheme.bodySmall?.color),
         ),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
           obscureText: isObscured,
+          style: TextStyle(color: theme.textTheme.bodyLarge?.color),
           decoration: InputDecoration(
             filled: true,
-            fillColor: const Color(0xFFF9FAFB),
+            fillColor: isDark ? Colors.black : const Color(0xFFF9FAFB),
             suffixIcon: IconButton(
               icon: Icon(
                 isObscured ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                color: Colors.grey,
+                color: theme.colorScheme.primary,
                 size: 20,
               ),
               onPressed: onToggle,
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade200),
+              borderSide: BorderSide(color: isDark ? Colors.yellow : Colors.grey.shade200),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade200),
+              borderSide: BorderSide(color: isDark ? Colors.yellow : Colors.grey.shade200),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppColors.primaryNavy, width: 1.5),
+              borderSide: BorderSide(color: theme.colorScheme.primary, width: 1.5),
             ),
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           ),
@@ -263,30 +283,38 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
   }
 
   void _showConfirmUpdateDialog(BuildContext context, String oldPass, String newPass) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Konfirmasi'),
-        content: const Text('Apakah anda yakin ingin mengubah kata sandi anda?'),
+        backgroundColor: theme.scaffoldBackgroundColor,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: isDark ? const BorderSide(color: Colors.yellow) : BorderSide.none),
+        title: Text('Konfirmasi', style: TextStyle(color: theme.colorScheme.primary)),
+        content: Text('Apakah anda yakin ingin mengubah kata sandi anda?',
+            style: TextStyle(color: theme.textTheme.bodyMedium?.color)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Batal'),
+            child: Text('Batal', style: TextStyle(color: theme.colorScheme.primary)),
           ),
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(dialogContext);
-              
+
               showDialog(
                 context: context,
                 barrierDismissible: false,
-                builder: (loadingContext) => const Center(
+                builder: (loadingContext) => Center(
                   child: Card(
+                    color: isDark ? Colors.black : Colors.white,
                     child: Padding(
-                      padding: EdgeInsets.all(20.0),
-                      child: CircularProgressIndicator(),
+                      padding: const EdgeInsets.all(20.0),
+                      child: CircularProgressIndicator(color: theme.colorScheme.primary),
                     ),
                   ),
                 ),
@@ -294,26 +322,27 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
 
               try {
                 final success = await ProfileController.updatePassword(
-                  widget.currentUser['_id'] as mongo.ObjectId,
-                  oldPass,
-                  newPass
-                );
+                    widget.currentUser['_id'] as mongo.ObjectId, oldPass, newPass);
 
                 if (mounted) {
                   Navigator.pop(context);
                   if (success) {
                     Navigator.pop(context);
-                    
+
                     // Tampilkan Dialog Sukses yang Informatif
                     showDialog(
                       context: context,
                       builder: (context) => AlertDialog(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        backgroundColor: theme.scaffoldBackgroundColor,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            side: isDark ? const BorderSide(color: Colors.yellow) : BorderSide.none),
                         content: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             const SizedBox(height: 16),
-                            const Icon(Icons.check_circle, color: Colors.green, size: 64),
+                            Icon(Icons.check_circle,
+                                color: isDark ? Colors.yellow : Colors.green, size: 64),
                             const SizedBox(height: 24),
                             const Text(
                               'Berhasil!',

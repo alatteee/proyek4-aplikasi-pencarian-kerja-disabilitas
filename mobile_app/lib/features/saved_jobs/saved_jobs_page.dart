@@ -93,19 +93,20 @@ class _SavedJobsPageState extends State<SavedJobsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: theme.appBarTheme.backgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.primaryNavy),
+          icon: Icon(Icons.arrow_back, color: theme.colorScheme.primary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Lowongan Tersimpan',
           style: TextStyle(
-            color: AppColors.primaryNavy,
+            color: theme.colorScheme.primary,
             fontWeight: FontWeight.bold,
             fontSize: 20,
           ),
@@ -114,19 +115,20 @@ class _SavedJobsPageState extends State<SavedJobsPage> {
       ),
       body: SafeArea(
         child: isLoading
-            ? const Center(child: CircularProgressIndicator())
+            ? Center(child: CircularProgressIndicator(color: theme.colorScheme.primary))
             : savedJobs.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
                       'Belum ada lowongan tersimpan',
                       style: TextStyle(
-                        color: AppColors.textGray,
+                        color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
                         fontSize: 15,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                   )
                 : RefreshIndicator(
+                    color: theme.colorScheme.primary,
                     onRefresh: fetchSavedJobs,
                     child: ListView.builder(
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -187,14 +189,15 @@ class _SavedJobCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.brightness == Brightness.dark ? Colors.black : Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade200),
-        boxShadow: const [
-          BoxShadow(
+        border: Border.all(color: theme.dividerColor),
+        boxShadow: theme.brightness == Brightness.dark ? [] : [
+          const BoxShadow(
             color: Colors.black12,
             blurRadius: 6,
             offset: Offset(0, 3),
@@ -215,10 +218,10 @@ class _SavedJobCard extends StatelessWidget {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: AppColors.primaryNavy.withOpacity(0.08),
+                    color: theme.colorScheme.primary.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(icon, color: AppColors.primaryNavy, size: 30),
+                  child: Icon(icon, color: theme.colorScheme.primary, size: 30),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -227,8 +230,8 @@ class _SavedJobCard extends StatelessWidget {
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(
-                          color: Colors.black87,
+                        style: TextStyle(
+                          color: theme.textTheme.titleLarge?.color,
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -236,16 +239,16 @@ class _SavedJobCard extends StatelessWidget {
                       const SizedBox(height: 3),
                       Text(
                         company,
-                        style: const TextStyle(
-                          color: AppColors.textGray,
+                        style: TextStyle(
+                          color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                           fontSize: 12,
                         ),
                       ),
                       const SizedBox(height: 5),
                       Text(
                         timeText,
-                        style: const TextStyle(
-                          color: AppColors.primaryNavy,
+                        style: TextStyle(
+                          color: theme.colorScheme.primary,
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
@@ -279,7 +282,7 @@ class _SavedJobCard extends StatelessWidget {
                 ),
                 IconButton(
                   onPressed: onBookmarkTap,
-                  icon: const Icon(Icons.bookmark, color: AppColors.primaryNavy),
+                  icon: Icon(Icons.bookmark, color: theme.colorScheme.primary),
                 ),
               ],
             ),

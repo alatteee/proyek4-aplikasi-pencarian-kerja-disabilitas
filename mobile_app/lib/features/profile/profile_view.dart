@@ -8,6 +8,8 @@ import 'help_view.dart';
 import 'about_view.dart';
 import '../saved_jobs/saved_jobs_page.dart';
 import 'profile_controller.dart';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'dart:io';
 import 'accessibility_settings_view.dart';
 
@@ -50,14 +52,15 @@ class _ProfileViewState extends State<ProfileView> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     if (isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: AppColors.primaryNavy),
+      return Center(
+        child: CircularProgressIndicator(color: theme.colorScheme.primary),
       );
     }
 
     return RefreshIndicator(
-    color: AppColors.primaryNavy,
+    color: theme.colorScheme.primary,
     onRefresh: _loadProfile,
     child: SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -71,22 +74,21 @@ class _ProfileViewState extends State<ProfileView> {
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
-                  color: AppColors.accentBlue.withOpacity(0.3),
+                  color: theme.colorScheme.secondaryContainer,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: userDetails?['profile_photo'] != null &&
                         userDetails!['profile_photo'].toString().isNotEmpty
                     ? ClipRRect(
                         borderRadius: BorderRadius.circular(20),
-                        child: Image.file(
-                          File(userDetails!['profile_photo']),
-                          fit: BoxFit.cover,
-                        ),
+                        child: userDetails!['profile_photo'].toString().startsWith('/') 
+                          ? Image.file(File(userDetails!['profile_photo']), fit: BoxFit.cover)
+                          : Image.memory(base64Decode(userDetails!['profile_photo']), fit: BoxFit.cover),
                       )
-                    : const Icon(
+                    : Icon(
                         Icons.person,
                         size: 50,
-                        color: AppColors.primaryNavy,
+                        color: theme.colorScheme.primary,
                       ),
               ),
               const SizedBox(width: 16),
@@ -98,10 +100,10 @@ class _ProfileViewState extends State<ProfileView> {
                       userDetails?['nama_lengkap'] ??
                           widget.currentUser['username'] ??
                           'User',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.primaryNavy,
+                        color: theme.colorScheme.primary,
                       ),
                     ),
                     const SizedBox(height: 2),
@@ -109,9 +111,9 @@ class _ProfileViewState extends State<ProfileView> {
                       userDetails?['email'] ??
                           widget.currentUser['email'] ??
                           '-',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
-                        color: AppColors.textGray,
+                        color: theme.textTheme.bodyMedium?.color,
                       ),
                     ),
                     const SizedBox(height: 14),
@@ -135,8 +137,8 @@ class _ProfileViewState extends State<ProfileView> {
                         },
                         style: OutlinedButton.styleFrom(
                           padding: EdgeInsets.zero,
-                          foregroundColor: AppColors.primaryNavy,
-                          side: const BorderSide(color: AppColors.primaryNavy),
+                          foregroundColor: theme.colorScheme.primary,
+                          side: BorderSide(color: theme.colorScheme.primary),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -229,11 +231,16 @@ class _ProfileViewState extends State<ProfileView> {
   }
 
   void _showLogoutDialog(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     showDialog(
       context: context,
       builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
-        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
+            side: isDark ? const BorderSide(color: Colors.yellow) : BorderSide.none),
+        backgroundColor: theme.scaffoldBackgroundColor,
         child: Stack(
           children: [
             // Tombol Close (X) di pojok kanan atas
@@ -241,7 +248,7 @@ class _ProfileViewState extends State<ProfileView> {
               right: 12,
               top: 12,
               child: IconButton(
-                icon: const Icon(Icons.close, color: AppColors.primaryNavy, size: 24),
+                icon: Icon(Icons.close, color: theme.colorScheme.primary, size: 24),
                 onPressed: () => Navigator.pop(context),
               ),
             ),
@@ -251,26 +258,26 @@ class _ProfileViewState extends State<ProfileView> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // Icon sesuai Mockup
-                  const Icon(
-                    Icons.logout_rounded, 
-                    size: 100, 
-                    color: AppColors.primaryNavy,
+                  Icon(
+                    Icons.logout_rounded,
+                    size: 100,
+                    color: theme.colorScheme.primary,
                   ),
                   const SizedBox(height: 24),
-                  const Text(
+                  Text(
                     'Logout Account?',
                     style: TextStyle(
-                      fontSize: 22, 
-                      fontWeight: FontWeight.bold, 
-                      color: Colors.black,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.primary,
                     ),
                   ),
                   const SizedBox(height: 12),
-                  const Text(
+                  Text(
                     'Apakah anda yakin akan logout\ndari akun anda?',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: Colors.grey, 
+                      color: theme.textTheme.bodyMedium?.color,
                       fontSize: 15,
                       height: 1.4,
                     ),
@@ -285,16 +292,17 @@ class _ProfileViewState extends State<ProfileView> {
                           child: ElevatedButton(
                             onPressed: () => Navigator.pop(context),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Color(0xFFE5E7EB), // Light gray
+                              backgroundColor: isDark ? Colors.grey[900] : const Color(0xFFE5E7EB),
                               elevation: 0,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),
+                                side: isDark ? const BorderSide(color: Colors.yellow) : BorderSide.none,
                               ),
                             ),
-                            child: const Text(
-                              'Cancel', 
+                            child: Text(
+                              'Cancel',
                               style: TextStyle(
-                                color: Colors.black87, 
+                                color: isDark ? Colors.yellow : Colors.black87,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
                               ),
@@ -315,16 +323,17 @@ class _ProfileViewState extends State<ProfileView> {
                               );
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primaryNavy,
+                              backgroundColor: theme.colorScheme.primary,
                               elevation: 0,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),
+                                side: isDark ? const BorderSide(color: Colors.yellow) : BorderSide.none,
                               ),
                             ),
-                            child: const Text(
-                              'Logout', 
+                            child: Text(
+                              'Logout',
                               style: TextStyle(
-                                color: Colors.white, 
+                                color: isDark ? Colors.black : Colors.white,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
                               ),
@@ -333,7 +342,7 @@ class _ProfileViewState extends State<ProfileView> {
                         ),
                       ),
                     ],
-                  ),
+                  )
                 ],
               ),
             ),

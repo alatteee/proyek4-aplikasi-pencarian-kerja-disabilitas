@@ -4,6 +4,8 @@ import 'profile_controller.dart';
 import 'edit_profile_view.dart';
 import 'widgets/skill_chip.dart';
 import 'widgets/profile_info_field.dart';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'dart:io';
 
 class ProfileDetailView extends StatefulWidget {
@@ -36,10 +38,11 @@ class _ProfileDetailViewState extends State<ProfileDetailView> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     if (isLoading) {
-      return const Scaffold(
-        backgroundColor: Colors.white,
-        body: Center(child: CircularProgressIndicator(color: AppColors.primaryNavy)),
+      return Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        body: Center(child: CircularProgressIndicator(color: theme.colorScheme.primary)),
       );
     }
 
@@ -53,16 +56,16 @@ class _ProfileDetailViewState extends State<ProfileDetailView> {
     List<String> skills = skillsData.map((e) => e.toString()).toList();
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: theme.appBarTheme.backgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.primaryNavy),
+          icon: Icon(Icons.arrow_back, color: theme.colorScheme.primary),
           onPressed: () => Navigator.pop(context, true),        ),
-        title: const Text(
+        title: Text(
           'Detail Profil',
-          style: TextStyle(color: AppColors.primaryNavy, fontWeight: FontWeight.bold, fontSize: 20),
+          style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold, fontSize: 20),
         ),
         centerTitle: false,
       ),
@@ -78,22 +81,21 @@ class _ProfileDetailViewState extends State<ProfileDetailView> {
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                    color: AppColors.accentBlue.withOpacity(0.3),
+                    color: theme.colorScheme.secondaryContainer,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: userDetails?['profile_photo'] != null &&
                       userDetails!['profile_photo'].toString().isNotEmpty
                   ? ClipRRect(
                       borderRadius: BorderRadius.circular(20),
-                      child: Image.file(
-                        File(userDetails!['profile_photo']),
-                        fit: BoxFit.cover,
-                      ),
+                      child: userDetails!['profile_photo'].toString().startsWith('/') 
+                        ? Image.file(File(userDetails!['profile_photo']), fit: BoxFit.cover)
+                        : Image.memory(base64Decode(userDetails!['profile_photo']), fit: BoxFit.cover),
                     )
-                  : const Icon(
+                  : Icon(
                       Icons.person,
                       size: 50,
-                      color: AppColors.primaryNavy,
+                      color: theme.colorScheme.primary,
                     ),
                 ),
                 const SizedBox(width: 16),
@@ -103,12 +105,12 @@ class _ProfileDetailViewState extends State<ProfileDetailView> {
                     children: [
                       Text(
                         namaLengkap,
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.primaryNavy),
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: theme.colorScheme.primary),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         email,
-                        style: const TextStyle(fontSize: 14, color: AppColors.textGray),
+                        style: TextStyle(fontSize: 14, color: theme.textTheme.bodyMedium?.color),
                       ),
                     ],
                   ),
@@ -126,13 +128,13 @@ class _ProfileDetailViewState extends State<ProfileDetailView> {
             ProfileInfoField(label: 'Deskripsi Disabilitas', value: deskripsiDisabilitas),
 
             // Skills
-            const Text(
+            Text(
               'Kemampuan',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87),
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: theme.textTheme.titleMedium?.color),
             ),
             const SizedBox(height: 8),
             skills.isEmpty 
-              ? const Text('Belum ada kemampuan ditambahkan', style: TextStyle(color: AppColors.textGray))
+              ? Text('Belum ada kemampuan ditambahkan', style: TextStyle(color: theme.textTheme.bodyMedium?.color))
               : Wrap(
                   spacing: 10,
                   runSpacing: 10,
@@ -146,6 +148,11 @@ class _ProfileDetailViewState extends State<ProfileDetailView> {
               width: double.infinity,
               height: 56,
               child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: theme.colorScheme.onPrimary,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
                 onPressed: () async {
                   final result = await Navigator.push(context, MaterialPageRoute(
                     builder: (_) => EditProfileView(
@@ -157,12 +164,8 @@ class _ProfileDetailViewState extends State<ProfileDetailView> {
                     _loadProfile();
                   }
                 },
-                icon: const Icon(Icons.edit, color: Colors.white, size: 20),
-                label: const Text('Edit Profile', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryNavy,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
+                icon: Icon(Icons.edit, color: theme.colorScheme.onPrimary, size: 20),
+                label: const Text('Edit Profile', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             ),
             const SizedBox(height: 32),

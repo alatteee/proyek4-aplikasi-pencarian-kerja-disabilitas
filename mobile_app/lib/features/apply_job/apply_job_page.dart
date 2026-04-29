@@ -130,25 +130,30 @@ class _ApplyJobPageState extends State<ApplyJobPage> {
   }
 
   void _showCustomSnackBar(String message, {IconData icon = Icons.info_outline}) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: AppColors.primaryNavy,
+        backgroundColor: isDark ? Colors.black : AppColors.primaryNavy,
         elevation: 8,
         duration: const Duration(seconds: 2),
         margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: isDark ? const BorderSide(color: Colors.yellow) : BorderSide.none,
+        ),
         content: Row(
           children: [
-            Icon(icon, color: Colors.white, size: 22),
+            Icon(icon, color: isDark ? Colors.yellow : Colors.white, size: 22),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 message,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: isDark ? Colors.yellow : Colors.white,
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                 ),
@@ -161,6 +166,7 @@ class _ApplyJobPageState extends State<ApplyJobPage> {
   }
 
   Future<void> _submitApplication() async {
+    // ... logic remains same ...
     if (_isSubmitting) return;
 
     final message = _messageController.text.trim();
@@ -269,8 +275,11 @@ class _ApplyJobPageState extends State<ApplyJobPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -295,20 +304,20 @@ class _ApplyJobPageState extends State<ApplyJobPage> {
                       jobType: _jobType,
                     ),
                     const SizedBox(height: 22),
-                    const Text(
+                    Text(
                       'Data Diri',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.primaryNavy,
+                        color: theme.colorScheme.primary,
                       ),
                     ),
                     const SizedBox(height: 3),
-                    const Text(
+                    Text(
                       'Data Diambil dari profil kamu. Pastikan sudah benar.',
                       style: TextStyle(
                         fontSize: 11,
-                        color: AppColors.textGray,
+                        color: isDark ? Colors.yellow.withOpacity(0.7) : AppColors.textGray,
                       ),
                     ),
                     const SizedBox(height: 14),
@@ -330,20 +339,20 @@ class _ApplyJobPageState extends State<ApplyJobPage> {
                       value: _phone.isEmpty ? '-' : _phone,
                     ),
                     const SizedBox(height: 26),
-                    const Text(
+                    Text(
                       'CV / Resume',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.primaryNavy,
+                        color: theme.colorScheme.primary,
                       ),
                     ),
                     const SizedBox(height: 6),
-                    const Text(
+                    Text(
                       'Upload atau pilih CV terbaru kamu',
                       style: TextStyle(
                         fontSize: 11,
-                        color: AppColors.textGray,
+                        color: isDark ? Colors.yellow.withOpacity(0.7) : AppColors.textGray,
                       ),
                     ),
                     const SizedBox(height: 14),
@@ -355,29 +364,29 @@ class _ApplyJobPageState extends State<ApplyJobPage> {
                       onPickFile: _pickCvFile,
                     ),
                     const SizedBox(height: 9),
-                    const Row(
+                    Row(
                       children: [
-                        Icon(Icons.info_outline, size: 15, color: AppColors.textGray),
-                        SizedBox(width: 4),
+                        Icon(Icons.info_outline, size: 15, color: isDark ? Colors.yellow : AppColors.textGray),
+                        const SizedBox(width: 4),
                         Text(
                           'Format File : PDF (Maks 10 MB)',
-                          style: TextStyle(fontSize: 11, color: AppColors.textGray),
+                          style: TextStyle(fontSize: 11, color: isDark ? Colors.yellow : AppColors.textGray),
                         ),
                       ],
                     ),
                     const SizedBox(height: 24),
-                    const Text(
+                    Text(
                       'Pesan untuk Perusahaan (Opsional)',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.primaryNavy,
+                        color: theme.colorScheme.primary,
                       ),
                     ),
                     const SizedBox(height: 6),
-                    const Text(
+                    Text(
                       'Tulis pesan singkat untuk memperkenalkan dirimu',
-                      style: TextStyle(fontSize: 11, color: AppColors.textGray),
+                      style: TextStyle(fontSize: 11, color: isDark ? Colors.yellow.withOpacity(0.7) : AppColors.textGray),
                     ),
                     const SizedBox(height: 12),
                     _MessageBox(
@@ -392,26 +401,26 @@ class _ApplyJobPageState extends State<ApplyJobPage> {
                       child: ElevatedButton.icon(
                         onPressed: _isSubmitting ? null : _submitApplication,
                         icon: _isSubmitting
-                            ? const SizedBox(
+                            ? SizedBox(
                                 width: 18,
                                 height: 18,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  valueColor: AlwaysStoppedAnimation<Color>(isDark ? Colors.black : Colors.white),
                                 ),
                               )
-                            : const Icon(Icons.send_outlined, color: Colors.white, size: 24),
+                            : Icon(Icons.send_outlined, color: isDark ? Colors.black : Colors.white, size: 24),
                         label: Text(
                           _isSubmitting ? 'Mengirim...' : 'Kirim Lamaran',
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: isDark ? Colors.black : Colors.white,
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primaryNavy,
-                          disabledBackgroundColor: AppColors.primaryNavy.withOpacity(0.65),
+                          backgroundColor: theme.colorScheme.primary,
+                          disabledBackgroundColor: theme.colorScheme.primary.withOpacity(0.65),
                           elevation: 4,
                           shadowColor: Colors.black26,
                           shape: RoundedRectangleBorder(
@@ -439,25 +448,26 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Row(
       children: [
         IconButton(
           onPressed: onBack,
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(),
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back,
-            color: AppColors.primaryNavy,
+            color: theme.colorScheme.primary,
             size: 28,
           ),
         ),
         const SizedBox(width: 18),
         Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: AppColors.primaryNavy,
+            color: theme.colorScheme.primary,
           ),
         ),
       ],
@@ -480,12 +490,15 @@ class _JobSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.accentBlue.withOpacity(0.08),
+        color: isDark ? Colors.yellow.withOpacity(0.1) : AppColors.accentBlue.withOpacity(0.08),
         borderRadius: BorderRadius.circular(16),
+        border: isDark ? Border.all(color: Colors.yellow.withOpacity(0.3)) : null,
       ),
       child: Row(
         children: [
@@ -493,12 +506,13 @@ class _JobSummaryCard extends StatelessWidget {
             width: 58,
             height: 58,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: isDark ? Colors.black : Colors.white,
               borderRadius: BorderRadius.circular(14),
+              border: isDark ? Border.all(color: Colors.yellow) : null,
             ),
-            child: const Icon(
+            child: Icon(
               Icons.headset_mic,
-              color: AppColors.primaryNavy,
+              color: theme.colorScheme.primary,
               size: 40,
             ),
           ),
@@ -509,10 +523,10 @@ class _JobSummaryCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 19,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.primaryNavy,
+                    color: theme.colorScheme.primary,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -520,9 +534,9 @@ class _JobSummaryCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   company,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
-                    color: AppColors.textGray,
+                    color: isDark ? Colors.yellow.withOpacity(0.7) : AppColors.textGray,
                     fontWeight: FontWeight.w600,
                   ),
                   maxLines: 1,
@@ -531,22 +545,22 @@ class _JobSummaryCard extends StatelessWidget {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    const Icon(Icons.location_on, size: 15, color: AppColors.textGray),
+                    Icon(Icons.location_on, size: 15, color: isDark ? Colors.yellow : AppColors.textGray),
                     const SizedBox(width: 4),
                     Flexible(
                       child: Text(
                         location,
-                        style: const TextStyle(fontSize: 12, color: AppColors.textGray),
+                        style: TextStyle(fontSize: 12, color: isDark ? Colors.yellow : AppColors.textGray),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     const SizedBox(width: 12),
-                    const Icon(Icons.work, size: 15, color: AppColors.textGray),
+                    Icon(Icons.work, size: 15, color: isDark ? Colors.yellow : AppColors.textGray),
                     const SizedBox(width: 4),
                     Flexible(
                       child: Text(
                         jobType,
-                        style: const TextStyle(fontSize: 12, color: AppColors.textGray),
+                        style: TextStyle(fontSize: 12, color: isDark ? Colors.yellow : AppColors.textGray),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -574,17 +588,19 @@ class _InfoField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       height: 58,
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? Colors.black : Colors.white,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.primaryNavy, width: 1),
+        border: Border.all(color: theme.colorScheme.primary, width: 1),
       ),
       child: Row(
         children: [
-          Icon(icon, color: AppColors.primaryNavy, size: 25),
+          Icon(icon, color: theme.colorScheme.primary, size: 25),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -593,18 +609,18 @@ class _InfoField extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
-                    color: AppColors.textGray,
+                    color: isDark ? Colors.yellow.withOpacity(0.7) : AppColors.textGray,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   value,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
-                    color: AppColors.primaryNavy,
+                    color: theme.colorScheme.primary,
                     fontWeight: FontWeight.bold,
                   ),
                   maxLines: 1,
@@ -632,6 +648,8 @@ class _CvBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final hasFile = fileName != null && fileName!.isNotEmpty;
 
     return Material(
@@ -643,8 +661,9 @@ class _CvBox extends StatelessWidget {
           height: 68,
           padding: const EdgeInsets.symmetric(horizontal: 13),
           decoration: BoxDecoration(
-            color: AppColors.accentBlue.withOpacity(0.06),
+            color: isDark ? Colors.yellow.withOpacity(0.12) : AppColors.accentBlue.withOpacity(0.06),
             borderRadius: BorderRadius.circular(12),
+            border: isDark ? Border.all(color: Colors.yellow.withOpacity(0.3)) : null,
           ),
           child: Row(
             children: [
@@ -652,12 +671,12 @@ class _CvBox extends StatelessWidget {
                 width: 43,
                 height: 43,
                 decoration: BoxDecoration(
-                  color: AppColors.accentBlue.withOpacity(0.18),
+                  color: theme.colorScheme.primary.withOpacity(0.18),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.description_outlined,
-                  color: AppColors.primaryNavy,
+                  color: theme.colorScheme.primary,
                   size: 30,
                 ),
               ),
@@ -669,9 +688,9 @@ class _CvBox extends StatelessWidget {
                   children: [
                     Text(
                       hasFile ? fileName! : 'Pilih CV / Resume',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
-                        color: AppColors.primaryNavy,
+                        color: theme.colorScheme.primary,
                         fontWeight: FontWeight.bold,
                       ),
                       overflow: TextOverflow.ellipsis,
@@ -679,7 +698,7 @@ class _CvBox extends StatelessWidget {
                     const SizedBox(height: 3),
                     Text(
                       hasFile ? 'PDF • ${fileSizeText ?? '-'}' : 'PDF • Maks 10 MB',
-                      style: const TextStyle(fontSize: 11, color: AppColors.textGray),
+                      style: TextStyle(fontSize: 11, color: isDark ? Colors.yellow.withOpacity(0.7) : AppColors.textGray),
                     ),
                   ],
                 ),
@@ -691,8 +710,8 @@ class _CvBox extends StatelessWidget {
                   onPressed: onPickFile,
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
-                    foregroundColor: AppColors.primaryNavy,
-                    side: const BorderSide(color: AppColors.primaryNavy, width: 1),
+                    foregroundColor: theme.colorScheme.primary,
+                    side: BorderSide(color: theme.colorScheme.primary, width: 1),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(6),
                     ),
@@ -724,12 +743,14 @@ class _MessageBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       height: 93,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDark ? Colors.black : Colors.white,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.primaryNavy, width: 1),
+        border: Border.all(color: theme.colorScheme.primary, width: 1),
       ),
       child: Stack(
         children: [
@@ -737,21 +758,21 @@ class _MessageBox extends StatelessWidget {
             controller: controller,
             maxLines: 4,
             maxLength: maxLength,
-            decoration: const InputDecoration(
+            style: TextStyle(fontSize: 13, color: isDark ? Colors.yellow : AppColors.primaryNavy),
+            decoration: InputDecoration(
               counterText: '',
               hintText: 'Tulis pesan kamu disini...',
-              hintStyle: TextStyle(color: AppColors.textGray, fontSize: 13),
+              hintStyle: TextStyle(color: isDark ? Colors.yellow.withOpacity(0.5) : AppColors.textGray, fontSize: 13),
               border: InputBorder.none,
-              contentPadding: EdgeInsets.fromLTRB(16, 13, 16, 24),
+              contentPadding: const EdgeInsets.fromLTRB(16, 13, 16, 24),
             ),
-            style: const TextStyle(fontSize: 13, color: AppColors.primaryNavy),
           ),
           Positioned(
             right: 14,
             bottom: 8,
             child: Text(
               '$currentLength/$maxLength',
-              style: const TextStyle(fontSize: 11, color: AppColors.textGray),
+              style: TextStyle(fontSize: 11, color: isDark ? Colors.yellow.withOpacity(0.7) : AppColors.textGray),
             ),
           ),
         ],
@@ -759,3 +780,4 @@ class _MessageBox extends StatelessWidget {
     );
   }
 }
+
