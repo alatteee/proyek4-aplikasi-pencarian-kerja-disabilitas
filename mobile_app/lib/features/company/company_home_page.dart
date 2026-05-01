@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../services/mongo_service.dart';
+import 'company_job_page.dart';
 
 class CompanyHomePage extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -151,9 +152,15 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
       case 0:
         return _buildDashboardContent();
       case 1:
-        return _buildPlaceholderPage(
-          title: 'Lowongan Saya',
-          icon: Icons.business_center_outlined,
+        if (company == null) {
+          return _buildPlaceholderPage(
+            title: 'Lowongan Saya',
+            icon: Icons.business_center_outlined,
+          );
+        }
+
+        return CompanyJobPage(
+          companyId: MongoService.getMongoId(company!['_id']),
         );
       case 2:
         return _buildPlaceholderPage(

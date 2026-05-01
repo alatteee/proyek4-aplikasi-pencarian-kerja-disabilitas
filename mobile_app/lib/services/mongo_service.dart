@@ -292,4 +292,102 @@ class MongoService {
       return [];
     }
   }
+
+  static Future<bool> updateCompanyJob({
+  required String jobId,
+  required Map<String, dynamic> data,
+  }) async {
+    try {
+      await ensureConnected();
+
+      if (jobId.isEmpty) return false;
+
+      await _jobVacanciesCollection.updateOne(
+        where.id(ObjectId.fromHexString(jobId)),
+        modify
+            .set('title', data['title'])
+            .set('location', data['location'])
+            .set('job_type', data['job_type'])
+            .set('description', data['description'])
+            .set('qualification', data['qualification'])
+            .set('facilities', data['facilities'])
+            .set('is_disability_friendly', data['is_disability_friendly'])
+            .set('updated_at', DateTime.now().toUtc()),
+      );
+
+      return true;
+    } catch (e) {
+      print('Gagal update lowongan: $e');
+      return false;
+    }
+  }
+
+  static Future<bool> updateJobStatus({
+  required String jobId,
+  required String status,
+  }) async {
+    try {
+      await ensureConnected();
+
+      if (jobId.isEmpty) return false;
+
+      await _jobVacanciesCollection.updateOne(
+        where.id(ObjectId.fromHexString(jobId)),
+        modify
+            .set('status', status)
+            .set('updated_at', DateTime.now().toUtc()),
+      );
+
+      return true;
+    } catch (e) {
+      print('Gagal update status lowongan: $e');
+      return false;
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getApplicantsByJob({
+  required String jobId,
+  }) async {
+    try {
+      await ensureConnected();
+
+      if (jobId.isEmpty) return [];
+
+      final applicants = await _jobApplicationsCollection
+          .find(
+            where
+                .eq('job_id', jobId)
+                .sortBy('created_at', descending: true),
+          )
+          .toList();
+
+      return applicants.cast<Map<String, dynamic>>();
+    } catch (e) {
+      print('Gagal mengambil pelamar berdasarkan lowongan: $e');
+      return [];
+    }
+  }
+
+  static Future<bool> updateApplicationStatus({
+  required String applicationId,
+  required String status,
+    }) async {
+      try {
+        await ensureConnected();
+
+        if (applicationId.isEmpty) return false;
+
+        await _jobApplicationsCollection.updateOne(
+          where.id(ObjectId.fromHexString(applicationId)),
+          modify
+              .set('status', status)
+              .set('updated_at', DateTime.now().toUtc()),
+        );
+
+        return true;
+      } catch (e) {
+        print('Gagal update status pelamar: $e');
+        return false;
+      }
+    }
 }
