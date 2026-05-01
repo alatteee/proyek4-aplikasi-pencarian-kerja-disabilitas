@@ -278,10 +278,19 @@ class MongoService {
 
       if (companyId.isEmpty) return [];
 
+      final jobs = await getCompanyJobs(companyId: companyId);
+
+      final jobIds = jobs
+          .map((job) => getMongoId(job['_id']))
+          .where((id) => id.isNotEmpty)
+          .toList();
+
+      if (jobIds.isEmpty) return [];
+
       final applicants = await _jobApplicationsCollection
           .find(
             where
-                .eq('company_id', ObjectId.fromHexString(companyId))
+                .oneFrom('job_id', jobIds)
                 .sortBy('created_at', descending: true),
           )
           .toList();
