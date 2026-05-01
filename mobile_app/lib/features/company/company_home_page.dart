@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../services/mongo_service.dart';
 import 'company_job_page.dart';
+import 'company_global_applicants_page.dart';
 
 class CompanyHomePage extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -163,9 +164,9 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
           companyId: MongoService.getMongoId(company!['_id']),
         );
       case 2:
-        return _buildPlaceholderPage(
-          title: 'Pelamar',
-          icon: Icons.groups_outlined,
+        return CompanyGlobalApplicantsPage(
+          applicants: applicants,
+          jobs: companyJobs,
         );
       case 3:
         return _buildPlaceholderPage(
@@ -734,13 +735,19 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
             icon: Icons.business_center_outlined,
             label: 'Lowongan',
             active: _selectedIndex == 1,
-            onTap: () => setState(() => _selectedIndex = 1),
+            onTap: () async {
+              setState(() => _selectedIndex = 1);
+              await _loadDashboardData();
+            },
           ),
           _BottomItem(
             icon: Icons.groups_outlined,
             label: 'Pelamar',
             active: _selectedIndex == 2,
-            onTap: () => setState(() => _selectedIndex = 2),
+            onTap: () async {
+              setState(() => _selectedIndex = 2);
+              await _loadDashboardData();
+            },
           ),
           _BottomItem(
             icon: Icons.person_outline,

@@ -153,7 +153,7 @@ class CompanyApplicantDetailPage extends StatelessWidget {
         ),
       );
 
-      Navigator.pop(context, true);
+      Navigator.pop(context, status);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -304,8 +304,6 @@ class CompanyApplicantDetailPage extends StatelessWidget {
     required String status,
     required dynamic createdAt,
   }) {
-    final isAccepted = _isAccepted(status);
-
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
       decoration: _cardDecoration(),
