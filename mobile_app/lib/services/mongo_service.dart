@@ -50,16 +50,7 @@ class MongoService {
   }
 
   static Future<List<Map<String, dynamic>>> getJobVacancies() async {
-    try {
-      await ensureConnected();
-      final jobs = await _jobVacanciesCollection
-          .find(where.eq('status', 'active').sortBy('created_at', descending: true))
-          .toList();
-      return jobs.cast<Map<String, dynamic>>();
-    } catch (e) {
-      print('Gagal mengambil data lowongan: $e');
-      return [];
-    }
+    return getPublishedJobs();
   }
 
   static Future<bool> saveJob({
@@ -399,4 +390,49 @@ class MongoService {
         return false;
       }
     }
+
+    static Future<bool> insertJobVacancy({
+    required Map<String, dynamic> data,
+  }) async {
+    try {
+      await ensureConnected();
+
+      final companyId = data['company_id']?.toString() ?? '';
+
+      final jobData = Map<String, dynamic>.from(data);
+
+      if (companyId.isNotEmpty) {
+        try {
+          jobData['company_id'] = ObjectId.fromHexString(companyId);
+        } catch (_) {
+          jobData['company_id'] = companyId;
+        }
+      }
+
+      await _jobVacanciesCollection.insertOne(jobData);
+      return true;
+    } catch (e) {
+      print('Gagal menambahkan lowongan: $e');
+      return false;
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getPublishedJobs() async {
+    try {
+      await ensureConnected();
+
+      final jobs = await _jobVacanciesCollection
+          .find(
+            where
+                .eq('status', 'active')
+                .sortBy('created_at', descending: true),
+          )
+          .toList();
+
+      return jobs.cast<Map<String, dynamic>>();
+    } catch (e) {
+      print('Gagal mengambil lowongan terpublikasi: $e');
+      return [];
+    }
+  }
 }
