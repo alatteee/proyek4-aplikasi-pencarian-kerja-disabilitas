@@ -1,7 +1,9 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../services/mongo_service.dart';
 
-class CompanyApplicantDetailPage extends StatelessWidget {
+class CompanyApplicantDetailPage extends StatefulWidget {
   final Map<String, dynamic> applicant;
   final Map<String, dynamic> job;
 
@@ -10,6 +12,68 @@ class CompanyApplicantDetailPage extends StatelessWidget {
     required this.applicant,
     required this.job,
   });
+
+  @override
+  State<CompanyApplicantDetailPage> createState() => _CompanyApplicantDetailPageState();
+}
+
+class _CompanyApplicantDetailPageState extends State<CompanyApplicantDetailPage> {
+  Map<String, dynamic>? user;
+  Map<String, dynamic>? userDetails;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final userId = widget.applicant['user_id']?.toString() ?? '';
+    if (userId.isEmpty) {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+      return;
+    }
+
+    try {
+      final results = await Future.wait([
+        MongoService.getUserById(widget.applicant['user_id']),
+        MongoService.getUserDetailsByUserId(widget.applicant['user_id']),
+      ]);
+
+      if (!mounted) return;
+
+      final loadedUser = results[0] as Map<String, dynamic>?;
+      var loadedUserDetails = results[1] as Map<String, dynamic>?;
+
+      if (loadedUserDetails == null) {
+        final applicantEmail = widget.applicant['email']?.toString() ?? '';
+        if (applicantEmail.isNotEmpty) {
+          loadedUserDetails = await MongoService.getUserDetailsByEmail(applicantEmail);
+        }
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        user = loadedUser;
+        userDetails = loadedUserDetails;
+        isLoading = false;
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
+      }
+    }
+  }
+
+  String _stringValue(dynamic value) => value?.toString() ?? '';
 
   static const Color navy = Color(0xFF0D1B55);
   static const Color textGrey = Color(0xFF4A5870);
@@ -133,7 +197,7 @@ class CompanyApplicantDetailPage extends StatelessWidget {
     required BuildContext context,
     required String status,
   }) async {
-    final applicationId = MongoService.getMongoId(applicant['_id']);
+    final applicationId = MongoService.getMongoId(widget.applicant['_id']);
 
     final success = await MongoService.updateApplicationStatus(
       applicationId: applicationId,
@@ -165,38 +229,88 @@ class CompanyApplicantDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = applicant['full_name']?.toString() ?? 'Albert Florest';
-    final email = applicant['email']?.toString() ?? 'user123@gmail.com';
-    final phone = applicant['phone']?.toString() ?? '08123456789';
-    final location =
-        applicant['location']?.toString() ?? job['location']?.toString() ?? 'Bandung, Jawa Barat';
+    if (isLoading) {
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
-    final status = applicant['status']?.toString() ?? 'pending';
-    final jobTitle =
-        applicant['job_title']?.toString() ?? job['title']?.toString() ?? 'Customer Service';
+    final name = _stringValue(userDetails?['nama_lengkap']).isNotEmpty
+        ? _stringValue(userDetails?['nama_lengkap'])
+        : _stringValue(widget.applicant['full_name']).isNotEmpty
+            ? _stringValue(widget.applicant['full_name'])
+            : _stringValue(user?['username']).isNotEmpty
+                ? _stringValue(user?['username'])
+                : 'Pelamar';
 
-    final birthDate =
-        applicant['birth_date']?.toString() ?? applicant['tanggal_lahir']?.toString() ?? '29 Februari 2000';
-    final gender =
-        applicant['gender']?.toString() ?? applicant['jenis_kelamin']?.toString() ?? 'Laki-laki';
-    final disability =
-        applicant['disability']?.toString() ?? applicant['disabilitas']?.toString() ?? 'Tunarungu';
+    final email = _stringValue(user?['email']).isNotEmpty
+        ? _stringValue(user?['email'])
+        : _stringValue(widget.applicant['email']);
 
-    final skills = _toStringList(applicant['skills']).isEmpty
-        ? ['Komunikasi', 'Microsoft Office']
-        : _toStringList(applicant['skills']);
+    final phone = _stringValue(userDetails?['phone']).isNotEmpty
+        ? _stringValue(userDetails?['phone'])
+        : _stringValue(user?['phone']).isNotEmpty
+            ? _stringValue(user?['phone'])
+            : _stringValue(widget.applicant['phone']);
 
-    final cvFileName = applicant['cv_file_name']?.toString() ?? 'CV_Albert_Florest.pdf';
-    final coverLetterFile =
-        applicant['cover_letter_file']?.toString() ?? 'Surat_Lamaran.pdf';
+    final location = _stringValue(widget.applicant['location']).isNotEmpty
+        ? _stringValue(widget.applicant['location'])
+        : _stringValue(widget.job['location']).isNotEmpty
+            ? _stringValue(widget.job['location'])
+            : '-';
 
-    final createdAt = applicant['created_at'];
+    final status = _stringValue(widget.applicant['status']).isNotEmpty
+        ? _stringValue(widget.applicant['status'])
+        : 'pending';
+
+    final jobTitle = _stringValue(widget.applicant['job_title']).isNotEmpty
+        ? _stringValue(widget.applicant['job_title'])
+        : _stringValue(widget.job['title']).isNotEmpty
+            ? _stringValue(widget.job['title'])
+            : '-';
+
+    final birthDate = _stringValue(userDetails?['tanggal_lahir']).isNotEmpty
+        ? _stringValue(userDetails?['tanggal_lahir'])
+        : _stringValue(userDetails?['birth_date']).isNotEmpty
+            ? _stringValue(userDetails?['birth_date'])
+            : _stringValue(widget.applicant['birth_date']).isNotEmpty
+                ? _stringValue(widget.applicant['birth_date'])
+                : _stringValue(widget.applicant['tanggal_lahir']);
+
+    final gender = _stringValue(userDetails?['jenis_kelamin']).isNotEmpty
+        ? _stringValue(userDetails?['jenis_kelamin'])
+        : _stringValue(widget.applicant['gender']).isNotEmpty
+            ? _stringValue(widget.applicant['gender'])
+            : _stringValue(widget.applicant['jenis_kelamin']);
+
+    final disability = _stringValue(userDetails?['jenis_disabilitas']).isNotEmpty
+        ? _stringValue(userDetails?['jenis_disabilitas'])
+        : _stringValue(userDetails?['disabilitas']).isNotEmpty
+            ? _stringValue(userDetails?['disabilitas'])
+            : _stringValue(widget.applicant['disability']).isNotEmpty
+                ? _stringValue(widget.applicant['disability'])
+                : _stringValue(widget.applicant['disabilitas']);
+
+    final skills = _toStringList(userDetails?['skills']).isNotEmpty
+        ? _toStringList(userDetails?['skills'])
+        : _toStringList(widget.applicant['skills']);
+
+    final cvFileName = _stringValue(widget.applicant['cv_file_name']).isNotEmpty
+        ? _stringValue(widget.applicant['cv_file_name'])
+        : _stringValue(widget.applicant['cv_name']);
+
+    final coverLetterFile = _stringValue(widget.applicant['cover_letter_file']).isNotEmpty
+        ? _stringValue(widget.applicant['cover_letter_file'])
+        : _stringValue(widget.applicant['cover_letter_name']);
+
+    final createdAt = widget.applicant['created_at'];
     final sentDate = _formatDateShort(createdAt);
-    final processedDate = applicant['processed_at'] != null
-        ? _formatDateShort(applicant['processed_at'])
-        : '14 Apr 2026';
-    final acceptedDate = applicant['accepted_at'] != null
-        ? _formatDateShort(applicant['accepted_at'])
+    final processedDate = widget.applicant['processed_at'] != null
+        ? _formatDateShort(widget.applicant['processed_at'])
+        : '-';
+    final acceptedDate = widget.applicant['accepted_at'] != null
+        ? _formatDateShort(widget.applicant['accepted_at'])
         : '-';
 
     final isAccepted = _isAccepted(status);
@@ -310,18 +424,7 @@ class CompanyApplicantDetailPage extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            radius: 34,
-            backgroundColor: lightBlue,
-            child: Text(
-              _getInitials(name),
-              style: const TextStyle(
-                color: navy,
-                fontSize: 22,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
+          _buildProfileAvatar(name),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -384,6 +487,38 @@ class CompanyApplicantDetailPage extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildProfileAvatar(String name) {
+    final profilePhoto = _stringValue(userDetails?['profile_photo']);
+    if (profilePhoto.isNotEmpty) {
+      try {
+        final ImageProvider<Object> imageProvider = profilePhoto.startsWith('/')
+            ? FileImage(File(profilePhoto)) as ImageProvider<Object>
+            : MemoryImage(base64Decode(profilePhoto)) as ImageProvider<Object>;
+
+        return CircleAvatar(
+          radius: 34,
+          backgroundColor: lightBlue,
+          backgroundImage: imageProvider,
+        );
+      } catch (_) {
+        // Fall back to initials when the photo is not valid.
+      }
+    }
+
+    return CircleAvatar(
+      radius: 34,
+      backgroundColor: lightBlue,
+      child: Text(
+        _getInitials(name),
+        style: const TextStyle(
+          color: navy,
+          fontSize: 22,
+          fontWeight: FontWeight.w900,
+        ),
       ),
     );
   }
