@@ -49,6 +49,87 @@ class MongoService {
     return value.toString();
   }
 
+  static ObjectId? _tryParseObjectId(dynamic value) {
+    if (value == null) return null;
+    if (value is ObjectId) return value;
+
+    final str = value.toString();
+    final hexRegExp = RegExp(r'[0-9a-fA-F]{24}');
+    final match = hexRegExp.firstMatch(str);
+    if (match == null) return null;
+
+    try {
+      return ObjectId.fromHexString(match.group(0)!);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static List<dynamic> _idCandidates(dynamic value) {
+    final candidates = <dynamic>{};
+    if (value == null) return [];
+    if (value is ObjectId) {
+      candidates.add(value);
+    }
+
+    final str = value.toString();
+    if (str.isNotEmpty) {
+      candidates.add(str);
+    }
+
+    final parsed = _tryParseObjectId(value);
+    if (parsed != null) {
+      candidates.add(parsed);
+    }
+
+    return candidates.toList();
+  }
+
+  static Future<Map<String, dynamic>?> getUserById(dynamic userId) async {
+    try {
+      await ensureConnected();
+      if (userId == null) return null;
+
+      for (final candidate in _idCandidates(userId)) {
+        final user = await users.findOne(where.id(candidate));
+        if (user != null) return user;
+      }
+
+      return null;
+    } catch (e) {
+      print('Gagal mengambil user by id: $e');
+      return null;
+    }
+  }
+
+  static Future<Map<String, dynamic>?> getUserDetailsByUserId(dynamic userId) async {
+    try {
+      await ensureConnected();
+      if (userId == null) return null;
+
+      for (final candidate in _idCandidates(userId)) {
+        final details = await userDetails.findOne(where.eq('user_id', candidate));
+        if (details != null) return details;
+      }
+
+      return null;
+    } catch (e) {
+      print('Gagal mengambil user details: $e');
+      return null;
+    }
+  }
+
+  static Future<Map<String, dynamic>?> getUserDetailsByEmail(String email) async {
+    try {
+      await ensureConnected();
+      if (email.isEmpty) return null;
+      return await userDetails.findOne(where.eq('email', email));
+    } catch (e) {
+      print('Gagal mengambil user details by email: $e');
+      return null;
+    }
+  }
+
   static Future<List<Map<String, dynamic>>> getJobVacancies() async {
     return getPublishedJobs();
   }
