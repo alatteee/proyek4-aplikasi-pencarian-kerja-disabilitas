@@ -80,12 +80,15 @@ class _CompanyCreateJobPageState extends State<CompanyCreateJobPage> {
     setState(() => _isLoading = false);
 
     if (success) {
-      Navigator.pushReplacement(
+      final result = await Navigator.push<String>(
         context,
         MaterialPageRoute(
           builder: (_) => const CompanyJobPublishedPage(),
         ),
-      ).then((_) => Navigator.pop(context, true));
+      );
+
+      if (!mounted || result == null) return;
+      Navigator.pop(context, result);
     } else {
       _showSnackBar('Gagal mempublish lowongan');
     }
@@ -474,7 +477,9 @@ class _CompanyCreateJobPageState extends State<CompanyCreateJobPage> {
 }
 
 class CompanyJobPublishedPage extends StatelessWidget {
-  const CompanyJobPublishedPage({super.key});
+  const CompanyJobPublishedPage({
+    super.key,
+  });
 
   static const Color navy = AppColors.primaryNavy;
 
@@ -490,7 +495,7 @@ class CompanyJobPublishedPage extends StatelessWidget {
               Row(
                 children: [
                   GestureDetector(
-                    onTap: () => Navigator.pop(context, true),
+                    onTap: () => Navigator.pop(context, 'jobs'),
                     child: const Icon(Icons.arrow_back, color: navy, size: 30),
                   ),
                   const SizedBox(width: 14),
@@ -551,7 +556,7 @@ class CompanyJobPublishedPage extends StatelessWidget {
                       width: double.infinity,
                       height: 48,
                       child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context, true),
+                        onPressed: () => Navigator.pop(context, 'jobs'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: navy,
                           foregroundColor: Colors.white,
@@ -570,7 +575,7 @@ class CompanyJobPublishedPage extends StatelessWidget {
                       width: double.infinity,
                       height: 48,
                       child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context, true),
+                        onPressed: () => Navigator.pop(context, 'home'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: navy,
                           side: const BorderSide(color: navy),

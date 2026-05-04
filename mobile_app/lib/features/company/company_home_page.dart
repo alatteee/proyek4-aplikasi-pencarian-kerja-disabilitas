@@ -445,9 +445,12 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
           ),
         );
 
-        if (result == true) {
-          await _loadDashboardData();
+        if (result == 'jobs') {
           setState(() => _selectedIndex = 1);
+          await _loadDashboardData();
+        } else if (result == 'home') {
+          setState(() => _selectedIndex = 0);
+          await _loadDashboardData();
         }
       },
       child: Container(
