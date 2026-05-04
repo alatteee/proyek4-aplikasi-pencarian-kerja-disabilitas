@@ -25,10 +25,12 @@ class _EditProfileViewState extends State<EditProfileView> {
   late TextEditingController _emailController;
   late TextEditingController _phoneController;
   late TextEditingController _deskripsiController;
+  late TextEditingController _birthDateController;
   final TextEditingController _skillController = TextEditingController();
 
   String? _jenisKelamin;
   String? _jenisDisabilitas;
+  DateTime? _birthDate;
   List<String> _skills = [];
   String? _cvFileName;
   bool _isLoading = false;
@@ -56,7 +58,22 @@ class _EditProfileViewState extends State<EditProfileView> {
     _emailController = TextEditingController(text: widget.userDetails?['email'] ?? widget.currentUser['email']);
     _phoneController = TextEditingController(text: widget.userDetails?['phone'] ?? widget.currentUser['phone']);
     _deskripsiController = TextEditingController(text: widget.userDetails?['deskripsi_disabilitas'] ?? '');
+    _birthDateController = TextEditingController();
     _profilePhotoPath = widget.userDetails?['profile_photo'];
+    
+    // Load birth date
+    final birthDateStr = widget.userDetails?['tanggal_lahir'];
+    if (birthDateStr != null) {
+      if (birthDateStr is DateTime) {
+        _birthDate = birthDateStr;
+        _birthDateController.text = '${_birthDate!.day}/${_birthDate!.month}/${_birthDate!.year}';
+      } else if (birthDateStr is String) {
+        try {
+          _birthDate = DateTime.parse(birthDateStr);
+          _birthDateController.text = '${_birthDate!.day}/${_birthDate!.month}/${_birthDate!.year}';
+        } catch (_) {}
+      }
+    }
     
     // Load dropdowns if they exist in options
     final jk = widget.userDetails?['jenis_kelamin'];
@@ -79,6 +96,7 @@ class _EditProfileViewState extends State<EditProfileView> {
     _emailController.dispose();
     _phoneController.dispose();
     _deskripsiController.dispose();
+    _birthDateController.dispose();
     _skillController.dispose();
     super.dispose();
   }
@@ -118,24 +136,48 @@ class _EditProfileViewState extends State<EditProfileView> {
     });
   }
 
-  Future<void> _pickProfilePhoto() async {
-    final picker = ImagePicker();
-
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 80,
+  Future<void> _pickBirthDate() async {
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: _birthDate ?? DateTime.now(),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
     );
 
-    if (pickedFile == null) return;
-    
-    // Read file as bytes
-    final bytes = await pickedFile.readAsBytes();
-    // Convert to base64
-    final base64String = base64Encode(bytes);
+    if (pickedDate != null) {
+      setState(() {
+        _birthDate = pickedDate;
+        _birthDateController.text = '${pickedDate.day}/${pickedDate.month}/${pickedDate.year}';
+      });
+    }
+  }
 
-    setState(() {
-      _profilePhotoPath = base64String;
-    });
+  Future<void> _pickProfilePhoto() async {
+    try {
+      final picker = ImagePicker();
+
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+      );
+
+      if (pickedFile == null) return;
+      
+      // Read file as bytes
+      final bytes = await pickedFile.readAsBytes();
+      // Convert to base64
+      final base64String = base64Encode(bytes);
+
+      setState(() {
+        _profilePhotoPath = base64String;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal memilih foto: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _saveProfile() async {
@@ -155,6 +197,7 @@ class _EditProfileViewState extends State<EditProfileView> {
       'nama_lengkap': _namaLengkapController.text.trim(),
       'email': _emailController.text.trim(),
       'phone': _phoneController.text.trim(),
+      'tanggal_lahir': _birthDate,
       'jenis_kelamin': _jenisKelamin,
       'jenis_disabilitas': _jenisDisabilitas,
       'deskripsi_disabilitas': _deskripsiController.text.trim(),
@@ -264,6 +307,13 @@ class _EditProfileViewState extends State<EditProfileView> {
                 if (v.length < 10) return 'Minimal 10 digit';
                 return null;
               }),
+              
+              GestureDetector(
+                onTap: _pickBirthDate,
+                child: AbsorbPointer(
+                  child: _buildTextField('Tanggal Lahir (DD/MM/YYYY)', _birthDateController, readOnly: true, validator: (v) => null),
+                ),
+              ),
               
               _buildDropdown('Jenis Kelamin', _kelaminOptions, _jenisKelamin, (v) => setState(() => _jenisKelamin = v)),
               _buildDropdown('Jenis Disabilitas', _disabilitasOptions, _jenisDisabilitas, (v) => setState(() => _jenisDisabilitas = v)),
@@ -385,7 +435,7 @@ class _EditProfileViewState extends State<EditProfileView> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, {int maxLines = 1, TextInputType? keyboardType, String? Function(String?)? validator}) {
+  Widget _buildTextField(String label, TextEditingController controller, {int maxLines = 1, TextInputType? keyboardType, String? Function(String?)? validator, bool readOnly = false}) {
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 20.0),
@@ -399,6 +449,7 @@ class _EditProfileViewState extends State<EditProfileView> {
             maxLines: maxLines,
             keyboardType: keyboardType,
             validator: validator,
+            readOnly: readOnly,
             style: TextStyle(color: theme.textTheme.bodyLarge?.color),
             decoration: InputDecoration(
               filled: true,

@@ -49,6 +49,20 @@ class _ProfileDetailViewState extends State<ProfileDetailView> {
     final namaLengkap = userDetails?['nama_lengkap'] ?? widget.currentUser['username'] ?? 'Belum diisi';
     final email = userDetails?['email'] ?? widget.currentUser['email'] ?? 'Belum diisi';
     final noHp = userDetails?['phone'] ?? widget.currentUser['phone'] ?? 'Belum diisi';
+    
+    String tanggalLahir = 'Belum diisi';
+    if (userDetails?['tanggal_lahir'] != null) {
+      final date = userDetails!['tanggal_lahir'];
+      if (date is DateTime) {
+        tanggalLahir = '${date.day}/${date.month}/${date.year}';
+      } else if (date is String) {
+        try {
+          final parsed = DateTime.parse(date);
+          tanggalLahir = '${parsed.day}/${parsed.month}/${parsed.year}';
+        } catch (_) {}
+      }
+    }
+    
     final jenisKelamin = userDetails?['jenis_kelamin'] ?? 'Belum diisi';
     final jenisDisabilitas = userDetails?['jenis_disabilitas'] ?? 'Belum diisi';
     final deskripsiDisabilitas = userDetails?['deskripsi_disabilitas'] ?? 'Belum diisi';
@@ -90,7 +104,17 @@ class _ProfileDetailViewState extends State<ProfileDetailView> {
                       borderRadius: BorderRadius.circular(20),
                       child: userDetails!['profile_photo'].toString().startsWith('/') 
                         ? Image.file(File(userDetails!['profile_photo']), fit: BoxFit.cover)
-                        : Image.memory(base64Decode(userDetails!['profile_photo']), fit: BoxFit.cover),
+                        : (() {
+                            try {
+                              return Image.memory(base64Decode(userDetails!['profile_photo']), fit: BoxFit.cover);
+                            } catch (_) {
+                              return Icon(
+                                Icons.person,
+                                size: 50,
+                                color: theme.colorScheme.primary,
+                              );
+                            }
+                          })(),
                     )
                   : Icon(
                       Icons.person,
@@ -123,6 +147,7 @@ class _ProfileDetailViewState extends State<ProfileDetailView> {
             ProfileInfoField(label: 'Nama Lengkap', value: namaLengkap),
             ProfileInfoField(label: 'No. Handphone', value: noHp),
             ProfileInfoField(label: 'Email', value: email),
+            ProfileInfoField(label: 'Tanggal Lahir', value: tanggalLahir),
             ProfileInfoField(label: 'Jenis Kelamin', value: jenisKelamin),
             ProfileInfoField(label: 'Jenis Disabilitas', value: jenisDisabilitas),
             ProfileInfoField(label: 'Deskripsi Disabilitas', value: deskripsiDisabilitas),

@@ -83,7 +83,17 @@ class _ProfileViewState extends State<ProfileView> {
                         borderRadius: BorderRadius.circular(20),
                         child: userDetails!['profile_photo'].toString().startsWith('/') 
                           ? Image.file(File(userDetails!['profile_photo']), fit: BoxFit.cover)
-                          : Image.memory(base64Decode(userDetails!['profile_photo']), fit: BoxFit.cover),
+                          : (() {
+                              try {
+                                return Image.memory(base64Decode(userDetails!['profile_photo']), fit: BoxFit.cover);
+                              } catch (_) {
+                                return Icon(
+                                  Icons.person,
+                                  size: 50,
+                                  color: theme.colorScheme.primary,
+                                );
+                              }
+                            })(),
                       )
                     : Icon(
                         Icons.person,

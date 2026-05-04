@@ -270,13 +270,10 @@ class _CompanyApplicantDetailPageState extends State<CompanyApplicantDetailPage>
             ? _stringValue(widget.job['title'])
             : '-';
 
-    final birthDate = _stringValue(userDetails?['tanggal_lahir']).isNotEmpty
-        ? _stringValue(userDetails?['tanggal_lahir'])
-        : _stringValue(userDetails?['birth_date']).isNotEmpty
-            ? _stringValue(userDetails?['birth_date'])
-            : _stringValue(widget.applicant['birth_date']).isNotEmpty
-                ? _stringValue(widget.applicant['birth_date'])
-                : _stringValue(widget.applicant['tanggal_lahir']);
+    final birthDateValue = userDetails?['tanggal_lahir'] ?? userDetails?['birth_date'] ?? widget.applicant['birth_date'] ?? widget.applicant['tanggal_lahir'];
+    final birthDate = birthDateValue != null && _stringValue(birthDateValue).isNotEmpty
+        ? _formatDateShort(birthDateValue)
+        : '-';
 
     final gender = _stringValue(userDetails?['jenis_kelamin']).isNotEmpty
         ? _stringValue(userDetails?['jenis_kelamin'])
@@ -698,21 +695,33 @@ class _CompanyApplicantDetailPageState extends State<CompanyApplicantDetailPage>
     required String coverLetterFile,
     required String uploadedDate,
   }) {
+    final documents = <String>[];
+    if (cvFileName.isNotEmpty) documents.add(cvFileName);
+    if (coverLetterFile.isNotEmpty) documents.add(coverLetterFile);
+
+    if (documents.isEmpty) {
+      return _sectionCard(
+        title: 'Dokumen',
+        child: const Text(
+          'Tidak ada dokumen',
+          style: TextStyle(color: textGrey),
+        ),
+      );
+    }
+
     return _sectionCard(
       title: 'Dokumen',
       child: Column(
         children: [
-          _documentRow(
-            fileName: cvFileName,
-            uploadedDate: uploadedDate,
-            onTap: () {},
-          ),
-          const SizedBox(height: 14),
-          _documentRow(
-            fileName: coverLetterFile,
-            uploadedDate: uploadedDate,
-            onTap: () {},
-          ),
+          for (int i = 0; i < documents.length; i++)
+            Padding(
+              padding: EdgeInsets.only(bottom: i < documents.length - 1 ? 14 : 0),
+              child: _documentRow(
+                fileName: documents[i],
+                uploadedDate: uploadedDate,
+                onTap: () {},
+              ),
+            ),
         ],
       ),
     );
