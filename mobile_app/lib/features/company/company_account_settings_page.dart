@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mongo_dart/mongo_dart.dart' as mongo;
 
-import '../../core/constants/app_colors.dart';
 import '../profile/profile_controller.dart';
 
 class CompanyAccountSettingsPage extends StatefulWidget {
@@ -64,29 +63,26 @@ class _CompanyAccountSettingsPageState
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-
-      // Kalau page ini dibuka dari tab Profil CompanyHomePage,
-      // bottom navigation tetap muncul karena page ini di-push dari dalam tab.
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 120),
+          padding: const EdgeInsets.fromLTRB(24, 22, 24, 120),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildHeader(),
 
-              const SizedBox(height: 48),
+              const SizedBox(height: 34),
 
               const Text(
                 'Ubah Kata Sandi',
                 style: TextStyle(
-                  fontSize: 20,
+                  fontSize: 16,
                   fontWeight: FontWeight.w900,
                   color: navy,
                 ),
               ),
 
-              const SizedBox(height: 18),
+              const SizedBox(height: 14),
 
               _buildPasswordCard(),
             ],
@@ -104,11 +100,11 @@ class _CompanyAccountSettingsPageState
           child: const Icon(
             Icons.arrow_back,
             color: navy,
-            size: 36,
+            size: 30,
           ),
         ),
 
-        const SizedBox(width: 20),
+        const SizedBox(width: 18),
 
         const Expanded(
           child: Text(
@@ -116,7 +112,7 @@ class _CompanyAccountSettingsPageState
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: 28,
+              fontSize: 23,
               fontWeight: FontWeight.w900,
               color: navy,
             ),
@@ -129,16 +125,16 @@ class _CompanyAccountSettingsPageState
   Widget _buildPasswordCard() {
     return Container(
       width: double.infinity,
-      height: 82,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      height: 66,
+      padding: const EdgeInsets.symmetric(horizontal: 18),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.20),
-            blurRadius: 12,
-            offset: const Offset(0, 5),
+            color: Colors.black.withOpacity(0.15),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -147,10 +143,10 @@ class _CompanyAccountSettingsPageState
           const Icon(
             Icons.vpn_key_rounded,
             color: navy,
-            size: 34,
+            size: 28,
           ),
 
-          const SizedBox(width: 18),
+          const SizedBox(width: 16),
 
           Expanded(
             child: TextField(
@@ -162,19 +158,19 @@ class _CompanyAccountSettingsPageState
                 contentPadding: EdgeInsets.zero,
               ),
               style: const TextStyle(
-                fontSize: 23,
+                fontSize: 18,
                 fontWeight: FontWeight.w900,
                 color: subtitle,
-                letterSpacing: 4,
+                letterSpacing: 3,
               ),
             ),
           ),
 
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
 
           SizedBox(
-            width: 86,
-            height: 48,
+            width: 76,
+            height: 40,
             child: ElevatedButton(
               onPressed: _showChangePasswordBottomSheet,
               style: ElevatedButton.styleFrom(
@@ -183,13 +179,13 @@ class _CompanyAccountSettingsPageState
                 elevation: 0,
                 padding: EdgeInsets.zero,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(11),
                 ),
               ),
               child: const Text(
                 'Ubah',
                 style: TextStyle(
-                  fontSize: 17,
+                  fontSize: 14.5,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -220,13 +216,13 @@ class _CompanyAccountSettingsPageState
               padding: EdgeInsets.only(
                 left: 24,
                 right: 24,
-                top: 28,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 28,
+                top: 26,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 26,
               ),
               decoration: const BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(30),
+                  top: Radius.circular(28),
                 ),
               ),
               child: SingleChildScrollView(
@@ -236,7 +232,7 @@ class _CompanyAccountSettingsPageState
                   children: [
                     Center(
                       child: Container(
-                        width: 48,
+                        width: 46,
                         height: 5,
                         decoration: BoxDecoration(
                           color: Colors.grey.shade300,
@@ -245,18 +241,18 @@ class _CompanyAccountSettingsPageState
                       ),
                     ),
 
-                    const SizedBox(height: 26),
+                    const SizedBox(height: 24),
 
                     const Text(
                       'Ubah Kata Sandi',
                       style: TextStyle(
-                        fontSize: 24,
+                        fontSize: 20,
                         fontWeight: FontWeight.w900,
                         color: navy,
                       ),
                     ),
 
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 22),
 
                     _buildPasswordInput(
                       label: 'Kata Sandi Lama',
@@ -269,7 +265,7 @@ class _CompanyAccountSettingsPageState
                       },
                     ),
 
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 16),
 
                     _buildPasswordInput(
                       label: 'Kata Sandi Baru',
@@ -282,7 +278,7 @@ class _CompanyAccountSettingsPageState
                       },
                     ),
 
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 16),
 
                     _buildPasswordInput(
                       label: 'Konfirmasi Kata Sandi Baru',
@@ -295,11 +291,11 @@ class _CompanyAccountSettingsPageState
                       },
                     ),
 
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 26),
 
                     SizedBox(
                       width: double.infinity,
-                      height: 56,
+                      height: 50,
                       child: ElevatedButton(
                         onPressed: () {
                           final oldPass = oldPassController.text.trim();
@@ -343,13 +339,13 @@ class _CompanyAccountSettingsPageState
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(14),
                           ),
                         ),
                         child: const Text(
                           'Simpan Perubahan',
                           style: TextStyle(
-                            fontSize: 17,
+                            fontSize: 15,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
@@ -377,7 +373,7 @@ class _CompanyAccountSettingsPageState
         Text(
           label,
           style: const TextStyle(
-            fontSize: 14,
+            fontSize: 13,
             fontWeight: FontWeight.w800,
             color: textDark,
           ),
@@ -389,6 +385,7 @@ class _CompanyAccountSettingsPageState
           controller: controller,
           obscureText: isObscured,
           style: const TextStyle(
+            fontSize: 13.5,
             color: textDark,
             fontWeight: FontWeight.w700,
           ),
@@ -397,6 +394,7 @@ class _CompanyAccountSettingsPageState
             fillColor: const Color(0xFFF8F9FC),
             hintText: label,
             hintStyle: TextStyle(
+              fontSize: 13.5,
               color: Colors.grey.shade400,
               fontWeight: FontWeight.w600,
             ),
@@ -407,12 +405,12 @@ class _CompanyAccountSettingsPageState
                     ? Icons.visibility_off_outlined
                     : Icons.visibility_outlined,
                 color: navy,
-                size: 22,
+                size: 21,
               ),
             ),
             contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 15,
+              horizontal: 15,
+              vertical: 13,
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(13),
@@ -426,7 +424,7 @@ class _CompanyAccountSettingsPageState
               borderRadius: BorderRadius.circular(13),
               borderSide: const BorderSide(
                 color: navy,
-                width: 1.5,
+                width: 1.4,
               ),
             ),
           ),
@@ -443,57 +441,121 @@ class _CompanyAccountSettingsPageState
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
-          title: const Text(
-            'Konfirmasi',
-            style: TextStyle(
-              color: navy,
-              fontWeight: FontWeight.w900,
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 42),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(24, 22, 24, 24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(26),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.18),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
-          ),
-          content: const Text(
-            'Apakah anda yakin ingin mengubah kata sandi anda?',
-            style: TextStyle(
-              color: textDark,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text(
-                'Batal',
-                style: TextStyle(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.lock_reset_rounded,
                   color: navy,
-                  fontWeight: FontWeight.w800,
+                  size: 62,
                 ),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.pop(dialogContext);
-                await _updatePassword(
-                  oldPass: oldPass,
-                  newPass: newPass,
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: navy,
-                foregroundColor: Colors.white,
-                elevation: 0,
-              ),
-              child: const Text(
-                'Ya, Ubah',
-                style: TextStyle(
-                  fontWeight: FontWeight.w800,
+
+                const SizedBox(height: 16),
+
+                const Text(
+                  'Ubah Kata Sandi?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w900,
+                    color: textDark,
+                  ),
                 ),
-              ),
+
+                const SizedBox(height: 10),
+
+                Text(
+                  'Apakah anda yakin ingin mengubah\nkata sandi akun anda?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.grey.shade500,
+                    height: 1.35,
+                  ),
+                ),
+
+                const SizedBox(height: 26),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 46,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(dialogContext),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFE0E0E0),
+                            foregroundColor: textDark,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                          ),
+                          child: const Text(
+                            'Batal',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(width: 14),
+
+                    Expanded(
+                      child: SizedBox(
+                        height: 46,
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            Navigator.pop(dialogContext);
+                            await _updatePassword(
+                              oldPass: oldPass,
+                              newPass: newPass,
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: navy,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                          ),
+                          child: const Text(
+                            'Ya, Ubah',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
+          ),
         );
       },
     );
@@ -540,10 +602,10 @@ class _CompanyAccountSettingsPageState
 
       if (!mounted) return;
 
-      Navigator.pop(context); // tutup loading
+      Navigator.pop(context);
 
       if (success) {
-        Navigator.pop(context); // tutup bottom sheet
+        Navigator.pop(context);
         _showSuccessDialog();
       } else {
         _showErrorDialog();
@@ -551,7 +613,7 @@ class _CompanyAccountSettingsPageState
     } catch (e) {
       if (!mounted) return;
 
-      Navigator.pop(context); // tutup loading
+      Navigator.pop(context);
       _showSnackBar(
         'Gagal mengubah kata sandi',
         color: Colors.red,
@@ -563,69 +625,82 @@ class _CompanyAccountSettingsPageState
     showDialog(
       context: context,
       builder: (successContext) {
-        return AlertDialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 14),
-
-              const Icon(
-                Icons.check_circle,
-                color: Colors.green,
-                size: 68,
-              ),
-
-              const SizedBox(height: 22),
-
-              const Text(
-                'Berhasil!',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  color: navy,
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 42),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(26),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.18),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
                 ),
-              ),
-
-              const SizedBox(height: 12),
-
-              const Text(
-                'Kata sandi Anda telah berhasil diperbarui.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.grey,
-                  fontWeight: FontWeight.w600,
-                  height: 1.4,
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.check_circle_rounded,
+                  color: Colors.green,
+                  size: 64,
                 ),
-              ),
 
-              const SizedBox(height: 24),
+                const SizedBox(height: 18),
 
-              SizedBox(
-                width: double.infinity,
-                height: 46,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(successContext),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: navy,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    'Selesai',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w900,
-                    ),
+                const Text(
+                  'Berhasil!',
+                  style: TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w900,
+                    color: navy,
                   ),
                 ),
-              ),
-            ],
+
+                const SizedBox(height: 10),
+
+                Text(
+                  'Kata sandi Anda telah berhasil\ndiperbarui.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.grey.shade500,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    height: 1.35,
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 46,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(successContext),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: navy,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                    ),
+                    child: const Text(
+                      'Selesai',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -636,47 +711,83 @@ class _CompanyAccountSettingsPageState
     showDialog(
       context: context,
       builder: (errorContext) {
-        return AlertDialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
-          title: const Row(
-            children: [
-              Icon(
-                Icons.warning_amber_rounded,
-                color: Colors.orange,
-              ),
-              SizedBox(width: 8),
-              Text(
-                'Perhatian',
-                style: TextStyle(
-                  color: navy,
-                  fontWeight: FontWeight.w900,
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 42),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(26),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.18),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
                 ),
-              ),
-            ],
-          ),
-          content: const Text(
-            'Kata sandi lama yang Anda masukkan tidak cocok. Silakan periksa kembali.',
-            style: TextStyle(
-              fontSize: 15,
-              color: textDark,
-              fontWeight: FontWeight.w600,
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.orange,
+                  size: 62,
+                ),
+
+                const SizedBox(height: 16),
+
+                const Text(
+                  'Perhatian',
+                  style: TextStyle(
+                    color: navy,
+                    fontSize: 19,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+
+                const SizedBox(height: 10),
+
+                Text(
+                  'Kata sandi lama yang Anda masukkan\ntidak cocok. Silakan periksa kembali.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    color: Colors.grey.shade500,
+                    fontWeight: FontWeight.w700,
+                    height: 1.35,
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 46,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(errorContext),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: navy,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
+                    ),
+                    child: const Text(
+                      'Tutup',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(errorContext),
-              child: const Text(
-                'Tutup',
-                style: TextStyle(
-                  color: navy,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-          ],
         );
       },
     );

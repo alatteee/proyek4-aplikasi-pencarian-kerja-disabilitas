@@ -86,49 +86,49 @@ class _CompanyProfileDetailPageState extends State<CompanyProfileDetailPage> {
                 ),
               )
             : SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(23, 24, 23, 34),
+                padding: const EdgeInsets.fromLTRB(23, 22, 23, 34),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildHeader(),
 
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 22),
 
                     _buildCompanyCard(
                       companyName: companyName,
                       field: field,
                     ),
 
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 24),
 
                     _buildInfoGroup(
                       label: 'Email',
                       value: email,
                     ),
 
-                    const SizedBox(height: 22),
+                    const SizedBox(height: 18),
 
                     _buildInfoGroup(
                       label: 'No. Telepon',
                       value: phone,
                     ),
 
-                    const SizedBox(height: 22),
+                    const SizedBox(height: 18),
 
                     _buildInfoGroup(
                       label: 'Alamat',
                       value: address,
                     ),
 
-                    const SizedBox(height: 22),
+                    const SizedBox(height: 18),
 
                     _buildInfoGroup(
                       label: 'Deskripsi Perusahaan',
                       value: description,
-                      minHeight: 92,
+                      minHeight: 84,
                     ),
 
-                    const SizedBox(height: 42),
+                    const SizedBox(height: 34),
 
                     _buildEditButton(),
                   ],
@@ -146,11 +146,11 @@ class _CompanyProfileDetailPageState extends State<CompanyProfileDetailPage> {
           child: const Icon(
             Icons.arrow_back,
             color: navy,
-            size: 32,
+            size: 30,
           ),
         ),
 
-        const SizedBox(width: 22),
+        const SizedBox(width: 18),
 
         const Expanded(
           child: Text(
@@ -158,7 +158,7 @@ class _CompanyProfileDetailPageState extends State<CompanyProfileDetailPage> {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: 25,
+              fontSize: 23,
               fontWeight: FontWeight.w900,
               color: navy,
             ),
@@ -175,17 +175,17 @@ class _CompanyProfileDetailPageState extends State<CompanyProfileDetailPage> {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(
-        horizontal: 22,
-        vertical: 26,
+        horizontal: 20,
+        vertical: 22,
       ),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.22),
-            blurRadius: 13,
-            offset: const Offset(0, 6),
+            color: Colors.black.withOpacity(0.16),
+            blurRadius: 11,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
@@ -194,10 +194,10 @@ class _CompanyProfileDetailPageState extends State<CompanyProfileDetailPage> {
           const Icon(
             Icons.apartment_rounded,
             color: navy,
-            size: 46,
+            size: 38,
           ),
 
-          const SizedBox(height: 13),
+          const SizedBox(height: 12),
 
           Text(
             companyName,
@@ -205,13 +205,13 @@ class _CompanyProfileDetailPageState extends State<CompanyProfileDetailPage> {
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
             style: const TextStyle(
-              fontSize: 24,
+              fontSize: 20,
               fontWeight: FontWeight.w900,
               color: textDark,
             ),
           ),
 
-          const SizedBox(height: 8),
+          const SizedBox(height: 7),
 
           Text(
             field,
@@ -219,7 +219,7 @@ class _CompanyProfileDetailPageState extends State<CompanyProfileDetailPage> {
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
             style: const TextStyle(
-              fontSize: 15,
+              fontSize: 13.5,
               fontWeight: FontWeight.w600,
               color: hintText,
             ),
@@ -232,7 +232,7 @@ class _CompanyProfileDetailPageState extends State<CompanyProfileDetailPage> {
   Widget _buildInfoGroup({
     required String label,
     required String value,
-    double minHeight = 64,
+    double minHeight = 58,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -240,13 +240,13 @@ class _CompanyProfileDetailPageState extends State<CompanyProfileDetailPage> {
         Text(
           label,
           style: const TextStyle(
-            fontSize: 18,
+            fontSize: 16,
             fontWeight: FontWeight.w900,
             color: textDark,
           ),
         ),
 
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
 
         Container(
           width: double.infinity,
@@ -254,17 +254,17 @@ class _CompanyProfileDetailPageState extends State<CompanyProfileDetailPage> {
             minHeight: minHeight,
           ),
           padding: EdgeInsets.symmetric(
-            horizontal: 22,
-            vertical: minHeight > 70 ? 18 : 0,
+            horizontal: 18,
+            vertical: minHeight > 70 ? 16 : 0,
           ),
           decoration: BoxDecoration(
             color: inputFill,
             borderRadius: BorderRadius.circular(14),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.20),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 7,
+                offset: const Offset(0, 3),
               ),
             ],
           ),
@@ -275,7 +275,7 @@ class _CompanyProfileDetailPageState extends State<CompanyProfileDetailPage> {
               maxLines: minHeight > 70 ? 4 : 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontSize: 15,
+                fontSize: 13.5,
                 fontWeight: FontWeight.w800,
                 color: hintText,
                 height: 1.35,
@@ -290,16 +290,16 @@ class _CompanyProfileDetailPageState extends State<CompanyProfileDetailPage> {
   Widget _buildEditButton() {
     return SizedBox(
       width: double.infinity,
-      height: 64,
+      height: 54,
       child: ElevatedButton(
         onPressed: _goToEditProfile,
         style: ElevatedButton.styleFrom(
           backgroundColor: navy,
           foregroundColor: Colors.white,
-          elevation: 8,
-          shadowColor: Colors.black.withOpacity(0.35),
+          elevation: 6,
+          shadowColor: Colors.black.withOpacity(0.28),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(15),
           ),
         ),
         child: const Row(
@@ -307,14 +307,14 @@ class _CompanyProfileDetailPageState extends State<CompanyProfileDetailPage> {
           children: [
             Icon(
               Icons.edit_rounded,
-              size: 25,
+              size: 21,
               color: Colors.white,
             ),
-            SizedBox(width: 18),
+            SizedBox(width: 12),
             Text(
               'Edit Profile',
               style: TextStyle(
-                fontSize: 22,
+                fontSize: 17,
                 fontWeight: FontWeight.w900,
                 color: Colors.white,
               ),

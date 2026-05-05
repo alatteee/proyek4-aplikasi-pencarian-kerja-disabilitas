@@ -124,25 +124,117 @@ class _CompanyEditProfilePageState extends State<CompanyEditProfilePage> {
 
     final shouldExit = await showDialog<bool>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Batalkan Perubahan?'),
-          content: const Text(
-            'Perubahan yang belum disimpan akan hilang.',
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 42),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(24, 22, 24, 24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(26),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.18),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.warning_amber_rounded,
+                  color: navy,
+                  size: 62,
+                ),
+
+                const SizedBox(height: 16),
+
+                const Text(
+                  'Batalkan Perubahan?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w900,
+                    color: textDark,
+                  ),
+                ),
+
+                const SizedBox(height: 10),
+
+                Text(
+                  'Perubahan yang belum disimpan\nakan hilang.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.grey.shade500,
+                    height: 1.35,
+                  ),
+                ),
+
+                const SizedBox(height: 26),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 46,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(dialogContext, false),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFE0E0E0),
+                            foregroundColor: textDark,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                          ),
+                          child: const Text(
+                            'Tetap Edit',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(width: 14),
+
+                    Expanded(
+                      child: SizedBox(
+                        height: 46,
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(dialogContext, true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: navy,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                          ),
+                          child: const Text(
+                            'Keluar',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Tetap Edit'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text(
-                'Keluar',
-                style: TextStyle(color: Colors.red),
-              ),
-            ),
-          ],
         );
       },
     );
@@ -169,7 +261,7 @@ class _CompanyEditProfilePageState extends State<CompanyEditProfilePage> {
               _buildHeader(),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(23, 24, 23, 34),
+                  padding: const EdgeInsets.fromLTRB(23, 22, 23, 34),
                   child: Form(
                     key: _formKey,
                     child: Column(
@@ -186,7 +278,7 @@ class _CompanyEditProfilePageState extends State<CompanyEditProfilePage> {
                           },
                         ),
 
-                        const SizedBox(height: 22),
+                        const SizedBox(height: 18),
 
                         _buildInputGroup(
                           label: 'Bidang Perusahaan',
@@ -194,7 +286,7 @@ class _CompanyEditProfilePageState extends State<CompanyEditProfilePage> {
                           hint: 'Contoh: Teknologi Informasi',
                         ),
 
-                        const SizedBox(height: 22),
+                        const SizedBox(height: 18),
 
                         _buildInputGroup(
                           label: 'Email',
@@ -216,7 +308,7 @@ class _CompanyEditProfilePageState extends State<CompanyEditProfilePage> {
                           },
                         ),
 
-                        const SizedBox(height: 22),
+                        const SizedBox(height: 18),
 
                         _buildInputGroup(
                           label: 'No. Telepon',
@@ -231,7 +323,7 @@ class _CompanyEditProfilePageState extends State<CompanyEditProfilePage> {
                           },
                         ),
 
-                        const SizedBox(height: 22),
+                        const SizedBox(height: 18),
 
                         _buildInputGroup(
                           label: 'Alamat',
@@ -245,7 +337,7 @@ class _CompanyEditProfilePageState extends State<CompanyEditProfilePage> {
                           },
                         ),
 
-                        const SizedBox(height: 22),
+                        const SizedBox(height: 18),
 
                         _buildInputGroup(
                           label: 'Deskripsi Perusahaan',
@@ -261,7 +353,7 @@ class _CompanyEditProfilePageState extends State<CompanyEditProfilePage> {
                           },
                         ),
 
-                        const SizedBox(height: 42),
+                        const SizedBox(height: 34),
 
                         _buildSaveButton(),
                       ],
@@ -278,7 +370,7 @@ class _CompanyEditProfilePageState extends State<CompanyEditProfilePage> {
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(23, 24, 23, 8),
+      padding: const EdgeInsets.fromLTRB(23, 22, 23, 6),
       child: Row(
         children: [
           GestureDetector(
@@ -286,11 +378,11 @@ class _CompanyEditProfilePageState extends State<CompanyEditProfilePage> {
             child: const Icon(
               Icons.arrow_back,
               color: navy,
-              size: 32,
+              size: 30,
             ),
           ),
 
-          const SizedBox(width: 22),
+          const SizedBox(width: 18),
 
           const Expanded(
             child: Text(
@@ -298,7 +390,7 @@ class _CompanyEditProfilePageState extends State<CompanyEditProfilePage> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 25,
+                fontSize: 23,
                 fontWeight: FontWeight.w900,
                 color: navy,
               ),
@@ -326,13 +418,13 @@ class _CompanyEditProfilePageState extends State<CompanyEditProfilePage> {
         Text(
           label,
           style: const TextStyle(
-            fontSize: 18,
+            fontSize: 16,
             fontWeight: FontWeight.w900,
             color: textDark,
           ),
         ),
 
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
 
         Container(
           decoration: BoxDecoration(
@@ -340,9 +432,9 @@ class _CompanyEditProfilePageState extends State<CompanyEditProfilePage> {
             borderRadius: BorderRadius.circular(14),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.20),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
+                color: Colors.black.withOpacity(0.15),
+                blurRadius: 7,
+                offset: const Offset(0, 3),
               ),
             ],
           ),
@@ -353,7 +445,7 @@ class _CompanyEditProfilePageState extends State<CompanyEditProfilePage> {
             maxLines: maxLines,
             validator: validator,
             style: const TextStyle(
-              fontSize: 15,
+              fontSize: 13.5,
               fontWeight: FontWeight.w800,
               color: hintText,
               height: 1.35,
@@ -361,15 +453,15 @@ class _CompanyEditProfilePageState extends State<CompanyEditProfilePage> {
             decoration: InputDecoration(
               hintText: hint,
               hintStyle: TextStyle(
-                fontSize: 15,
+                fontSize: 13.5,
                 fontWeight: FontWeight.w700,
                 color: hintText.withOpacity(0.75),
               ),
               filled: true,
               fillColor: inputFill,
               contentPadding: EdgeInsets.symmetric(
-                horizontal: 22,
-                vertical: isMultiline ? 18 : 20,
+                horizontal: 18,
+                vertical: isMultiline ? 16 : 17,
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
@@ -383,21 +475,21 @@ class _CompanyEditProfilePageState extends State<CompanyEditProfilePage> {
                 borderRadius: BorderRadius.circular(14),
                 borderSide: const BorderSide(
                   color: navy,
-                  width: 1.3,
+                  width: 1.2,
                 ),
               ),
               errorBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
                 borderSide: const BorderSide(
                   color: Colors.red,
-                  width: 1.2,
+                  width: 1.1,
                 ),
               ),
               focusedErrorBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
                 borderSide: const BorderSide(
                   color: Colors.red,
-                  width: 1.3,
+                  width: 1.2,
                 ),
               ),
             ),
@@ -410,26 +502,26 @@ class _CompanyEditProfilePageState extends State<CompanyEditProfilePage> {
   Widget _buildSaveButton() {
     return SizedBox(
       width: double.infinity,
-      height: 64,
+      height: 54,
       child: ElevatedButton(
         onPressed: isSaving ? null : _saveProfile,
         style: ElevatedButton.styleFrom(
           backgroundColor: navy,
           foregroundColor: Colors.white,
           disabledBackgroundColor: Colors.grey.shade500,
-          elevation: 8,
-          shadowColor: Colors.black.withOpacity(0.35),
+          elevation: 6,
+          shadowColor: Colors.black.withOpacity(0.28),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(15),
           ),
         ),
         child: isSaving
             ? const SizedBox(
-                width: 24,
-                height: 24,
+                width: 22,
+                height: 22,
                 child: CircularProgressIndicator(
                   color: Colors.white,
-                  strokeWidth: 2.6,
+                  strokeWidth: 2.4,
                 ),
               )
             : const Row(
@@ -438,17 +530,17 @@ class _CompanyEditProfilePageState extends State<CompanyEditProfilePage> {
                 children: [
                   Icon(
                     Icons.save_rounded,
-                    size: 25,
+                    size: 21,
                     color: Colors.white,
                   ),
-                  SizedBox(width: 14),
+                  SizedBox(width: 10),
                   Flexible(
                     child: Text(
                       'Simpan Perubahan',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 22,
+                        fontSize: 17,
                         fontWeight: FontWeight.w900,
                         color: Colors.white,
                       ),
