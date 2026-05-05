@@ -6,6 +6,8 @@ import '../applications/applications_page.dart';
 import '../profile/profile_view.dart';
 import '../profile/accessibility_settings_view.dart';
 
+import '../cv/cv_view.dart';
+
 class HomePage extends StatefulWidget {
   final Map<String, dynamic> userData;
   final bool showSuccessDialog;
@@ -297,6 +299,7 @@ class _HomePageState extends State<HomePage> {
     final List<Widget> pages = [
       _buildBeranda(context),
       ApplicationsPage(currentUser: widget.userData),
+      CvView(currentUser: widget.userData),
       _buildProfil(context),
     ];
 
@@ -330,6 +333,7 @@ class _HomePageState extends State<HomePage> {
             items: const [
               BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Beranda'),
               BottomNavigationBarItem(icon: Icon(Icons.cases_outlined), label: 'Lamaran'),
+              BottomNavigationBarItem(icon: Icon(Icons.description), label: 'CV'),
               BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
             ],
           ),
@@ -370,19 +374,23 @@ class _HomePageState extends State<HomePage> {
 
   AppBar _buildOtherAppBar() {
     final theme = Theme.of(context);
+    String title = 'Profil Saya';
+    if (_selectedIndex == 1) title = 'Lamaran Saya';
+    if (_selectedIndex == 2) title = 'CV Digital';
+    
     return AppBar(
       backgroundColor: theme.appBarTheme.backgroundColor,
       elevation: 0,
-      leading: IconButton(
-        icon: Icon(Icons.arrow_back, color: theme.colorScheme.primary),
-        onPressed: () => setState(() => _selectedIndex = 0),
-      ),
-      title: Text(
-        _selectedIndex == 1 ? 'Lamaran Saya' : 'Profil Saya',
-        style: TextStyle(
-          color: theme.colorScheme.primary,
-          fontWeight: FontWeight.bold,
-          fontSize: 20,
+      automaticallyImplyLeading: false,
+      title: Container(
+        margin: const EdgeInsets.only(left: 8),
+        child: Text(
+          title,
+          style: TextStyle(
+            color: theme.colorScheme.primary,
+            fontWeight: FontWeight.bold,
+            fontSize: 24,
+          ),
         ),
       ),
       centerTitle: false,
