@@ -5,6 +5,7 @@ class MongoService {
   static late Db db;
   static late DbCollection users;
   static late DbCollection userDetails;
+  static late DbCollection cvs;
 
   static Future<void> connect() async {
     final uri = dotenv.env['MONGODB_URI'];
@@ -20,6 +21,7 @@ class MongoService {
 
     users = db.collection('users');
     userDetails = db.collection('user_details');
+    cvs = db.collection('cvs');
 
     print('✅ MongoDB Connected');
   }
