@@ -6,6 +6,7 @@ import '../applications/applications_page.dart';
 import '../profile/profile_view.dart';
 import '../profile/accessibility_settings_view.dart';
 
+import '../notifications/notification_page.dart';
 import '../cv/cv_view.dart';
 
 class HomePage extends StatefulWidget {
@@ -359,13 +360,62 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
       actions: [
-        IconButton(
-          onPressed: () {},
-          icon: Icon(
-            Icons.notifications,
-            color: theme.colorScheme.primary,
-            size: 30,
+        FutureBuilder<int>(
+          future: MongoService.getUnreadNotificationCount(
+            receiverId: _currentUserId,
+            receiverRole: 'job_seeker',
           ),
+          builder: (context, snapshot) {
+            final hasUnread = (snapshot.data ?? 0) > 0;
+            return Stack(
+              children: [
+                IconButton(
+                  onPressed: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => NotificationPage(
+                          currentUser: widget.userData,
+                          role: 'job_seeker',
+                        ),
+                      ),
+                    );
+                    setState(() {}); // Refresh to update unread indicator
+                  },
+                  icon: Icon(
+                    Icons.notifications,
+                    color: theme.colorScheme.primary,
+                    size: 30,
+                  ),
+                ),
+                if (hasUnread)
+                  Positioned(
+                    right: 8,
+                    top: 8,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
+                      child: Text(
+                        '${snapshot.data}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
         ),
         const SizedBox(width: 8),
       ],

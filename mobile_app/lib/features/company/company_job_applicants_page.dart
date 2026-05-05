@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'company_applicant_detail_page.dart';
+
 import '../../services/mongo_service.dart';
+import 'company_applicant_detail_page.dart';
 
 class CompanyJobApplicantsPage extends StatefulWidget {
   final Map<String, dynamic> job;
@@ -19,12 +20,15 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
   static const Color navy = Color(0xFF0D1B55);
   static const Color textGrey = Color(0xFF4A5870);
   static const Color lightBlue = Color(0xFFEAF0FF);
+
   static const Color activeGreenBg = Color(0xFFD4F0DD);
   static const Color activeGreenText = Color(0xFF18A64A);
   static const Color orangeBg = Color(0xFFFFE4B8);
   static const Color orangeText = Color(0xFFF59E0B);
   static const Color redBg = Color(0xFFF8D1D3);
   static const Color redText = Color(0xFFE2262C);
+  static const Color greyBg = Color(0xFFE5E5E5);
+  static const Color greyText = Color(0xFF5B6472);
 
   final TextEditingController _searchController = TextEditingController();
 
@@ -59,6 +63,72 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
     });
   }
 
+  String _normalizeStatus(String status) {
+    final value = status.toLowerCase();
+
+    if (value == 'pending' || value == 'dikirim') return 'dikirim';
+
+    if (value == 'reviewed' ||
+        value == 'diproses' ||
+        value == 'ditinjau') {
+      return 'ditinjau';
+    }
+
+    if (value == 'interview' || value == 'wawancara') return 'wawancara';
+
+    if (value == 'accepted' ||
+        value == 'diterima' ||
+        value == 'lolos' ||
+        value == 'lolos berkas') {
+      return 'diterima';
+    }
+
+    if (value == 'rejected' || value == 'ditolak') return 'ditolak';
+
+    return 'dikirim';
+  }
+
+  String _statusLabel(String status) {
+    switch (_normalizeStatus(status)) {
+      case 'dikirim':
+        return 'Dikirim';
+      case 'ditinjau':
+        return 'Ditinjau';
+      case 'wawancara':
+        return 'Wawancara';
+      case 'diterima':
+        return 'Diterima';
+      case 'ditolak':
+        return 'Ditolak';
+      default:
+        return 'Dikirim';
+    }
+  }
+
+  Color _statusBg(String status) {
+    final normalized = _normalizeStatus(status);
+
+    if (normalized == 'dikirim') return greyBg;
+    if (normalized == 'ditinjau') return orangeBg;
+    if (normalized == 'wawancara') return lightBlue;
+    if (normalized == 'diterima') return activeGreenBg;
+    if (normalized == 'ditolak') return redBg;
+
+    return greyBg;
+  }
+
+  Color _statusText(String status) {
+    final normalized = _normalizeStatus(status);
+
+    if (normalized == 'dikirim') return greyText;
+    if (normalized == 'ditinjau') return orangeText;
+    if (normalized == 'wawancara') return navy;
+    if (normalized == 'diterima') return activeGreenText;
+    if (normalized == 'ditolak') return redText;
+
+    return greyText;
+  }
+
   List<Map<String, dynamic>> get filteredApplicants {
     return applicants.where((applicant) {
       final name = applicant['full_name']?.toString().toLowerCase() ?? '';
@@ -68,18 +138,10 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
 
       final matchSearch = name.contains(query) || email.contains(query);
 
+      final normalizedStatus = _normalizeStatus(status);
+
       final matchFilter = selectedFilter == 'Semua' ||
-          (selectedFilter == 'Diproses' &&
-              (status == 'pending' ||
-                  status == 'reviewed' ||
-                  status == 'diproses')) ||
-          (selectedFilter == 'Lolos' &&
-              (status == 'accepted' ||
-                  status == 'diterima' ||
-                  status == 'lolos')) ||
-          (selectedFilter == 'Ditolak' &&
-              (status == 'rejected' ||
-                  status == 'ditolak'));
+          selectedFilter.toLowerCase() == normalizedStatus;
 
       return matchSearch && matchFilter;
     }).toList();
@@ -89,6 +151,7 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
     if (value == null) return '-';
 
     DateTime? date;
+
     if (value is DateTime) {
       date = value;
     } else {
@@ -117,46 +180,14 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
 
   String _getInitials(String name) {
     final cleanName = name.trim();
+
     if (cleanName.isEmpty) return '?';
 
     final parts = cleanName.split(' ');
+
     if (parts.length == 1) return parts.first[0].toUpperCase();
 
     return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-  }
-
-  String _statusLabel(String status) {
-    switch (status.toLowerCase()) {
-      case 'pending':
-      case 'reviewed':
-      case 'diproses':
-        return 'Diproses';
-      case 'accepted':
-      case 'diterima':
-      case 'lolos':
-        return 'Lolos';
-      case 'rejected':
-      case 'ditolak':
-        return 'Ditolak';
-      default:
-        return 'Diproses';
-    }
-  }
-
-  Color _statusBg(String status) {
-    final label = _statusLabel(status);
-
-    if (label == 'Lolos') return activeGreenBg;
-    if (label == 'Ditolak') return redBg;
-    return orangeBg;
-  }
-
-  Color _statusText(String status) {
-    final label = _statusLabel(status);
-
-    if (label == 'Lolos') return activeGreenText;
-    if (label == 'Ditolak') return redText;
-    return orangeText;
   }
 
   @override
@@ -169,22 +200,35 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _loadApplicants,
+          color: navy,
           child: Padding(
             padding: const EdgeInsets.fromLTRB(22, 24, 22, 0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildHeader(context),
+
                 const SizedBox(height: 22),
+
                 _buildJobSummary(jobTitle, companyName),
+
                 const SizedBox(height: 20),
+
                 _buildSearchBox(),
+
                 const SizedBox(height: 18),
+
                 _buildFilterButtons(),
+
                 const SizedBox(height: 22),
+
                 Expanded(
                   child: isLoading
-                      ? const Center(child: CircularProgressIndicator())
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                            color: navy,
+                          ),
+                        )
                       : filteredApplicants.isEmpty
                           ? _buildEmptyState()
                           : ListView.builder(
@@ -217,13 +261,19 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
             color: navy,
           ),
         ),
+
         const SizedBox(width: 18),
-        const Text(
-          'Pelamar Lowongan',
-          style: TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.w900,
-            color: navy,
+
+        const Expanded(
+          child: Text(
+            'Pelamar Lowongan',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 26,
+              fontWeight: FontWeight.w900,
+              color: navy,
+            ),
           ),
         ),
       ],
@@ -250,7 +300,9 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
               size: 30,
             ),
           ),
+
           const SizedBox(width: 14),
+
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -277,6 +329,7 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
               ],
             ),
           ),
+
           Text(
             '${applicants.length} pelamar',
             style: const TextStyle(
@@ -336,47 +389,52 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
   }
 
   Widget _buildFilterButtons() {
-    final filters = ['Semua', 'Diproses', 'Lolos'];
+    final filters = [
+      'Semua',
+      'Dikirim',
+      'Ditinjau',
+      'Wawancara',
+      'Diterima',
+      'Ditolak',
+    ];
 
-    return Row(
-      children: filters.map((filter) {
-        final isSelected = selectedFilter == filter;
+    return SizedBox(
+      height: 40,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: filters.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (context, index) {
+          final filter = filters[index];
+          final isSelected = selectedFilter == filter;
 
-        return Expanded(
-          child: Padding(
-            padding: EdgeInsets.only(
-              right: filter == 'Lolos' ? 0 : 8,
-            ),
-            child: GestureDetector(
-              onTap: () => setState(() => selectedFilter = filter),
-              child: Container(
-                height: 38,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: isSelected ? navy : Colors.white,
-                  borderRadius: BorderRadius.circular(11),
-                  border: Border.all(
-                    color: navy,
-                    width: 1.3,
-                  ),
+          return GestureDetector(
+            onTap: () => setState(() => selectedFilter = filter),
+            child: Container(
+              constraints: const BoxConstraints(minWidth: 96),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: isSelected ? navy : Colors.white,
+                borderRadius: BorderRadius.circular(13),
+                border: Border.all(
+                  color: navy,
+                  width: 1.3,
                 ),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    filter,
-                    maxLines: 1,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: isSelected ? Colors.white : Colors.black87,
-                    ),
-                  ),
+              ),
+              child: Text(
+                filter,
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w900,
+                  color: isSelected ? Colors.white : navy,
                 ),
               ),
             ),
-          ),
-        );
-      }).toList(),
+          );
+        },
+      ),
     );
   }
 
@@ -384,11 +442,11 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
     final name = applicant['full_name']?.toString() ?? 'Pelamar';
     final email = applicant['email']?.toString() ?? '-';
     final phone = applicant['phone']?.toString() ?? '-';
-    final status = applicant['status']?.toString() ?? 'pending';
+    final status = applicant['status']?.toString() ?? 'dikirim';
 
     return GestureDetector(
-      onTap: () {
-        Navigator.push(
+      onTap: () async {
+        final result = await Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => CompanyApplicantDetailPage(
@@ -397,6 +455,12 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
             ),
           ),
         );
+
+        if (result is String && mounted) {
+          setState(() {
+            applicant['status'] = result;
+          });
+        }
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
@@ -416,7 +480,9 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
                 ),
               ),
             ),
+
             const SizedBox(width: 14),
+
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -431,7 +497,9 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
                       color: navy,
                     ),
                   ),
+
                   const SizedBox(height: 4),
+
                   Text(
                     email,
                     maxLines: 1,
@@ -442,7 +510,9 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
+
                   const SizedBox(height: 4),
+
                   Text(
                     phone,
                     maxLines: 1,
@@ -453,7 +523,9 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
+
                   const SizedBox(height: 8),
+
                   Text(
                     'Melamar ${_formatDate(applicant['created_at'])}',
                     style: const TextStyle(
@@ -465,7 +537,9 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
                 ],
               ),
             ),
+
             const SizedBox(width: 8),
+
             _buildStatusBadge(status),
           ],
         ),
@@ -475,7 +549,7 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
 
   Widget _buildStatusBadge(String status) {
     return Container(
-      width: 82,
+      width: 88,
       height: 30,
       alignment: Alignment.center,
       decoration: BoxDecoration(
@@ -485,7 +559,7 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
       child: Text(
         _statusLabel(status),
         style: TextStyle(
-          fontSize: 12,
+          fontSize: 11.5,
           fontWeight: FontWeight.w900,
           color: _statusText(status),
         ),

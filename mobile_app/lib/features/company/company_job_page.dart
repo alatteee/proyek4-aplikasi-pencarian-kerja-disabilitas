@@ -79,22 +79,28 @@ class _CompanyJobPageState extends State<CompanyJobPage> {
   }
 
   int _getApplicantCount(String jobId) {
+    if (jobId.isEmpty) return 0;
     return applicants.where((app) {
-      return app['job_id']?.toString() == jobId;
+      final appJobId = MongoService.getMongoId(app['job_id']);
+      return appJobId == jobId;
     }).length;
   }
 
   int _getProcessedCount(String jobId) {
+    if (jobId.isEmpty) return 0;
     return applicants.where((app) {
-      final sameJob = app['job_id']?.toString() == jobId;
+      final appJobId = MongoService.getMongoId(app['job_id']);
+      final sameJob = appJobId == jobId;
       final status = app['status']?.toString().toLowerCase() ?? '';
-      return sameJob && (status == 'pending' || status == 'reviewed' || status == 'diproses');
+      return sameJob && (status == 'pending' || status == 'reviewed' || status == 'diproses' || status == 'ditinjau');
     }).length;
   }
 
   int _getAcceptedCount(String jobId) {
+    if (jobId.isEmpty) return 0;
     return applicants.where((app) {
-      final sameJob = app['job_id']?.toString() == jobId;
+      final appJobId = MongoService.getMongoId(app['job_id']);
+      final sameJob = appJobId == jobId;
       final status = app['status']?.toString().toLowerCase() ?? '';
       return sameJob && (status == 'accepted' || status == 'diterima' || status == 'lolos');
     }).length;
