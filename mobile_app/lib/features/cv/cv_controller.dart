@@ -9,7 +9,12 @@ class CvController {
       if (userId is ObjectId) {
         uid = userId;
       } else if (userId is String) {
-        uid = ObjectId.fromHexString(userId);
+        // Handle case where String is "ObjectId('...')"
+        if (userId.startsWith('ObjectId("') && userId.endsWith('")')) {
+          uid = ObjectId.fromHexString(userId.substring(10, userId.length - 2));
+        } else {
+          uid = ObjectId.fromHexString(userId);
+        }
       }
 
       if (uid == null) return null;
@@ -84,7 +89,12 @@ class CvController {
       if (userId is ObjectId) {
         uid = userId;
       } else if (userId is String) {
-        uid = ObjectId.fromHexString(userId);
+        // Handle case where String is "ObjectId('...')"
+        if (userId.startsWith('ObjectId("') && userId.endsWith('")')) {
+          uid = ObjectId.fromHexString(userId.substring(10, userId.length - 2));
+        } else {
+          uid = ObjectId.fromHexString(userId);
+        }
       }
 
       if (uid == null) return false;

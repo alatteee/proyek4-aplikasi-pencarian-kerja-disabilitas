@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../services/mongo_service.dart';
+import '../cv/cv_detail_view.dart';
+import '../cv/cv_controller.dart';
 
 class CompanyApplicantDetailPage extends StatefulWidget {
   final Map<String, dynamic> applicant;
@@ -695,34 +697,99 @@ class _CompanyApplicantDetailPageState extends State<CompanyApplicantDetailPage>
     required String coverLetterFile,
     required String uploadedDate,
   }) {
-    final documents = <String>[];
-    if (cvFileName.isNotEmpty) documents.add(cvFileName);
-    if (coverLetterFile.isNotEmpty) documents.add(coverLetterFile);
-
-    if (documents.isEmpty) {
-      return _sectionCard(
-        title: 'Dokumen',
-        child: const Text(
-          'Tidak ada dokumen',
-          style: TextStyle(color: textGrey),
-        ),
-      );
-    }
-
     return _sectionCard(
-      title: 'Dokumen',
-      child: Column(
-        children: [
-          for (int i = 0; i < documents.length; i++)
-            Padding(
-              padding: EdgeInsets.only(bottom: i < documents.length - 1 ? 14 : 0),
-              child: _documentRow(
-                fileName: documents[i],
-                uploadedDate: uploadedDate,
-                onTap: () {},
+      title: 'CV Digital',
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: lightBlue.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: chipBlue.withOpacity(0.3)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: navy.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.description_rounded, color: navy, size: 28),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'CV Digital Pelamar',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: navy,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Detail pengalaman dan pendidikan',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: textGrey.withOpacity(0.8),
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
             ),
-        ],
+            const SizedBox(width: 8),
+            SizedBox(
+              height: 36,
+              child: ElevatedButton(
+                onPressed: () async {
+                  final userId = widget.applicant['user_id'];
+                  final cvData = await CvController.getCvByUserId(userId);
+                  
+                  if (!mounted) return;
+                  
+                  if (cvData != null) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CvDetailView(
+                          cvData: cvData,
+                          currentUser: user ?? {},
+                          isReadOnly: true,
+                        ),
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Pelamar belum mengunggah CV Digital')),
+                    );
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: navy,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                ),
+                child: const Text('Detail', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

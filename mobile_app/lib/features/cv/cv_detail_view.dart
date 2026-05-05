@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants/app_colors.dart';
 import 'cv_form_view.dart';
 
 class CvDetailView extends StatelessWidget {
   final Map<String, dynamic> cvData;
   final Map<String, dynamic> currentUser;
+  final bool isReadOnly;
 
-  const CvDetailView({super.key, required this.cvData, required this.currentUser});
+  const CvDetailView({super.key, required this.cvData, required this.currentUser, this.isReadOnly = false});
 
   @override
   Widget build(BuildContext context) {
@@ -23,16 +25,17 @@ class CvDetailView extends StatelessWidget {
         elevation: 0,
         iconTheme: const IconThemeData(color: AppColors.primaryNavy),
         actions: [
-          TextButton.icon(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => CvFormView(currentUser: currentUser, existingCv: cvData)),
-              );
-            },
-            icon: const Icon(Icons.edit, size: 18),
-            label: const Text('Edit'),
-          ),
+          if (!isReadOnly)
+            TextButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => CvFormView(currentUser: currentUser, existingCv: cvData)),
+                );
+              },
+              icon: const Icon(Icons.edit, size: 18),
+              label: const Text('Edit'),
+            ),
         ],
       ),
       body: SingleChildScrollView(
@@ -81,7 +84,12 @@ class CvDetailView extends StatelessWidget {
             const SizedBox(height: 32),
 
             if (cvData['portfolio_link'] != null && cvData['portfolio_link'].toString().isNotEmpty)
-              _buildSection('Portofolio', cvData['portfolio_link'], Icons.link),
+              _buildSection(
+                'Portofolio',
+                cvData['portfolio_link'],
+                Icons.link,
+                isLink: true,
+              ),
           ],
         ),
       ),
@@ -95,7 +103,7 @@ class CvDetailView extends StatelessWidget {
     );
   }
 
-  Widget _buildSection(String title, String content, IconData icon) {
+  Widget _buildSection(String title, String content, IconData icon, {bool isLink = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -107,7 +115,30 @@ class CvDetailView extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 12),
-        Text(content, style: const TextStyle(fontSize: 16, color: Colors.black87, height: 1.5)),
+        if (isLink)
+          InkWell(
+            onTap: () async {
+              final url = Uri.parse(content.startsWith('http') ? content : 'https://$content');
+              try {
+                if (await canLaunchUrl(url)) {
+                  await launchUrl(url, mode: LaunchMode.externalApplication);
+                }
+              } catch (e) {
+                // Silently fail or show snackbar
+              }
+            },
+            child: Text(
+              content,
+              style: const TextStyle(
+                fontSize: 16,
+                color: Colors.blue,
+                decoration: TextDecoration.underline,
+                height: 1.5,
+              ),
+            ),
+          )
+        else
+          Text(content, style: const TextStyle(fontSize: 16, color: Colors.black87, height: 1.5)),
       ],
     );
   }
