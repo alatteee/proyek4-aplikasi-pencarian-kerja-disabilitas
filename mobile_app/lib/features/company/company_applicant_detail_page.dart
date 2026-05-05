@@ -99,6 +99,24 @@ class _CompanyApplicantDetailPageState
 
   String _stringValue(dynamic value) => value?.toString() ?? '';
 
+  String _cleanBase64Image(String value) {
+    var cleaned = value.trim();
+
+    if (cleaned.contains(',')) {
+      cleaned = cleaned.split(',').last;
+    }
+
+    cleaned = cleaned.replaceAll(RegExp(r'\s+'), '');
+
+    return cleaned;
+  }
+
+  bool _isLikelyLocalFilePath(String value) {
+    return value.startsWith('/data/') ||
+        value.startsWith('/storage/') ||
+        value.startsWith('/sdcard/');
+  }
+
   String _getInitials(String name) {
     final cleanName = name.trim();
 
@@ -576,23 +594,10 @@ class _CompanyApplicantDetailPageState
     );
   }
 
-  Widget _buildProfileAvatar(String name) {
-    final profilePhoto = _stringValue(userDetails?['profile_photo']);
+Widget _buildProfileAvatar(String name) {
+  final profilePhoto = _stringValue(userDetails?['profile_photo']);
 
-    if (profilePhoto.isNotEmpty) {
-      try {
-        final ImageProvider<Object> imageProvider = profilePhoto.startsWith('/')
-            ? FileImage(File(profilePhoto)) as ImageProvider<Object>
-            : MemoryImage(base64Decode(profilePhoto)) as ImageProvider<Object>;
-
-        return CircleAvatar(
-          radius: 34,
-          backgroundColor: lightBlue,
-          backgroundImage: imageProvider,
-        );
-      } catch (_) {}
-    }
-
+  Widget fallbackAvatar() {
     return CircleAvatar(
       radius: 34,
       backgroundColor: lightBlue,
@@ -606,6 +611,78 @@ class _CompanyApplicantDetailPageState
       ),
     );
   }
+
+  debugPrint(
+    'DEBUG FOTO DETAIL $name: '
+    'isEmpty=${profilePhoto.isEmpty}, '
+    'length=${profilePhoto.length}, '
+    'prefix=${profilePhoto.length > 40 ? profilePhoto.substring(0, 40) : profilePhoto}',
+  );
+
+  final photo = profilePhoto.trim();
+
+  if (photo.isEmpty) {
+    return fallbackAvatar();
+  }
+
+  try {
+    if (photo.startsWith('http')) {
+      return ClipOval(
+        child: Image.network(
+          photo,
+          width: 68,
+          height: 68,
+          fit: BoxFit.cover,
+          errorBuilder: (_, error, ___) {
+            debugPrint('DEBUG IMAGE NETWORK ERROR DETAIL $name: $error');
+            return fallbackAvatar();
+          },
+        ),
+      );
+    }
+
+    if (_isLikelyLocalFilePath(photo)) {
+      return ClipOval(
+        child: Image.file(
+          File(photo),
+          width: 68,
+          height: 68,
+          fit: BoxFit.cover,
+          errorBuilder: (_, error, ___) {
+            debugPrint('DEBUG IMAGE FILE ERROR DETAIL $name: $error');
+            return fallbackAvatar();
+          },
+        ),
+      );
+    }
+
+    final cleanedPhoto = _cleanBase64Image(photo);
+    final bytes = base64Decode(cleanedPhoto);
+
+    debugPrint(
+      'DEBUG BASE64 OK DETAIL $name: '
+      'bytesLength=${bytes.length}, '
+      'firstBytes=${bytes.length >= 4 ? bytes.sublist(0, 4).toString() : bytes.toString()}',
+    );
+
+    return ClipOval(
+      child: Image.memory(
+        bytes,
+        width: 68,
+        height: 68,
+        fit: BoxFit.cover,
+        gaplessPlayback: true,
+        errorBuilder: (_, error, ___) {
+          debugPrint('DEBUG IMAGE MEMORY ERROR DETAIL $name: $error');
+          return fallbackAvatar();
+        },
+      ),
+    );
+  } catch (e) {
+    debugPrint('Gagal render foto detail pelamar $name: $e');
+    return fallbackAvatar();
+  }
+}
 
   Widget _buildStatusTimelineCard({
     required String status,

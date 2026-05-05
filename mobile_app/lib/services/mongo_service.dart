@@ -17,22 +17,21 @@ class MongoService {
     }
 
     if (_isDbOpen) return;
-    if (_isConnecting) return; // Prevent multiple simultaneous connection attempts
+    if (_isConnecting) return;
 
     _isConnecting = true;
     try {
-      // Tambahkan parameter untuk stabilitas Atlas
       String finalUri = uri;
       if (!finalUri.contains('tls=')) {
         final separator = finalUri.contains('?') ? '&' : '?';
-        finalUri += '${separator}tls=true&safeAtlas=true&keepAlive=true&connectTimeoutMS=10000&socketTimeoutMS=45000&maxIdleTimeMS=10000';
+        finalUri +=
+            '${separator}tls=true&safeAtlas=true&keepAlive=true&connectTimeoutMS=10000&socketTimeoutMS=45000&maxIdleTimeMS=10000';
       }
 
       print('🔄 Connecting to MongoDB Atlas...');
       db = await Db.create(finalUri);
       await db.open();
 
-      // Ensure all shared collection references are fresh
       users = db.collection('users');
       userDetails = db.collection('user_details');
       cvs = db.collection('cvs');
@@ -62,22 +61,22 @@ class MongoService {
     if (!_isDbOpen) {
       print('🔄 Membuka kembali koneksi MongoDB yang terputus...');
       await connect();
-      
-      // Wait a bit if we just started connecting
+
       int retries = 0;
       while (!_isDbOpen && retries < 5) {
         await Future.delayed(const Duration(milliseconds: 500));
         retries++;
       }
     }
-    
-    // Always sync critical collections after ensuring connection
+
     if (_isDbOpen) {
       users = db.collection('users');
       userDetails = db.collection('user_details');
       cvs = db.collection('cvs');
     } else {
-      throw Exception('MongoDart Error: No master connection (Reconnection failed)');
+      throw Exception(
+        'MongoDart Error: No master connection (Reconnection failed)',
+      );
     }
   }
 
@@ -120,7 +119,6 @@ class MongoService {
     try {
       await ensureConnected();
 
-      // Ensure IDs are processed to stay consistent with Atlas storage patterns
       final rId = _tryParseObjectId(receiverId) ?? receiverId;
       final sId = _tryParseObjectId(senderId) ?? senderId;
       final aId = _tryParseObjectId(applicationId) ?? applicationId;
@@ -141,7 +139,7 @@ class MongoService {
       };
 
       print('DEBUG: Inserting Notification: $notificationData');
-      
+
       await _notificationsCollection.insertOne(notificationData);
 
       return true;
@@ -184,7 +182,6 @@ class MongoService {
 
       if (notificationId.isEmpty) return false;
 
-      // Use candidates for notification ID just in case
       final candidates = _idCandidates(notificationId);
       final query = where.oneFrom('_id', candidates);
 
@@ -310,13 +307,70 @@ class MongoService {
     }
   }
 
-  static Future<Map<String, dynamic>?> getApplicationById(dynamic applicationId) async {
+  static Future<List<Map<String, dynamic>>> enrichApplicantsWithUserDetails(
+    List<Map<String, dynamic>> applicants,
+  ) async {
+    try {
+      await ensureConnected();
+
+      if (applicants.isEmpty) return [];
+
+      final enrichedApplicants = <Map<String, dynamic>>[];
+
+      for (final applicant in applicants) {
+        final applicantMap = Map<String, dynamic>.from(applicant);
+        final userId = applicantMap['user_id'];
+
+        if (userId != null) {
+          final details = await getUserDetailsByUserId(userId);
+
+          if (details != null) {
+            final profilePhoto = details['profile_photo'];
+            final namaLengkap = details['nama_lengkap'];
+            final jenisDisabilitas = details['jenis_disabilitas'];
+            final skills = details['skills'];
+
+            if (profilePhoto != null && profilePhoto.toString().isNotEmpty) {
+              applicantMap['profile_photo'] = profilePhoto;
+            }
+
+            if (namaLengkap != null && namaLengkap.toString().isNotEmpty) {
+              applicantMap['nama_lengkap'] = namaLengkap;
+              applicantMap['full_name'] = namaLengkap;
+            }
+
+            if (jenisDisabilitas != null &&
+                jenisDisabilitas.toString().isNotEmpty) {
+              applicantMap['jenis_disabilitas'] = jenisDisabilitas;
+            }
+
+            if (skills != null) {
+              applicantMap['skills'] = skills;
+            }
+          }
+        }
+
+        enrichedApplicants.add(applicantMap);
+      }
+
+      return enrichedApplicants;
+    } catch (e) {
+      print('Gagal enrich data pelamar dengan user details: $e');
+      return applicants;
+    }
+  }
+
+  static Future<Map<String, dynamic>?> getApplicationById(
+    dynamic applicationId,
+  ) async {
     try {
       await ensureConnected();
       if (applicationId == null) return null;
 
       for (final candidate in _idCandidates(applicationId)) {
-        final app = await _jobApplicationsCollection.findOne(where.id(candidate));
+        final app = await _jobApplicationsCollection.findOne(
+          where.id(candidate),
+        );
         if (app != null) return app;
       }
       return null;
@@ -535,7 +589,10 @@ class MongoService {
       final jobCandidates = _idCandidates(jobId);
 
       final existing = await _jobApplicationsCollection.findOne(
-        where.oneFrom('user_id', userCandidates).oneFrom('job_id', jobCandidates),
+        where.oneFrom('user_id', userCandidates).oneFrom(
+              'job_id',
+              jobCandidates,
+            ),
       );
 
       return existing != null;
@@ -559,11 +616,9 @@ class MongoService {
         return false;
       }
 
-      // Convert critical IDs to handle potential type mismatches in queries
       final uId = _tryParseObjectId(userId) ?? userId;
       final jId = _tryParseObjectId(jobId) ?? jobId;
 
-      // 1. Check if already applied using flexible ID candidates
       final alreadyApplied = await hasAppliedJob(
         userId: uId,
         jobId: jId,
@@ -574,7 +629,6 @@ class MongoService {
         return false;
       }
 
-      // 2. Prepare data for insertion (ensure consistent ObjectId format for searching later)
       final finalAppData = Map<String, dynamic>.from(applicationData);
       finalAppData['user_id'] = uId;
       finalAppData['job_id'] = jId;
@@ -584,23 +638,22 @@ class MongoService {
 
       print('DEBUG: Application inserted with ID: $insertedId');
 
-      // 3. Create Notification for Company
       try {
-        // Find the job to get the company_id
         final job = await getJobById(jId);
-        
+
         if (job != null) {
           final companyId = job['company_id'];
           final companyCandidates = _idCandidates(companyId);
-          
+
           final company = await _companiesCollection.findOne(
-            where.oneFrom('_id', companyCandidates)
+            where.oneFrom('_id', companyCandidates),
           );
-          
+
           if (company != null && company['user_id'] != null) {
             final companyUserId = company['user_id'];
-            final message = "${applicationData['full_name']} melamar posisi ${job['title']}.";
-            
+            final message =
+                "${applicationData['full_name']} melamar posisi ${job['title']}.";
+
             await createNotification(
               receiverId: companyUserId,
               receiverRole: 'company',
@@ -793,7 +846,6 @@ class MongoService {
 
       final jobs = await getCompanyJobs(companyId: companyId);
 
-      // Collect all possible ID formats for these jobs
       final allJobCandidates = [];
       for (var job in jobs) {
         allJobCandidates.addAll(_idCandidates(job['_id']));
@@ -934,7 +986,7 @@ class MongoService {
 
       final candidates = _idCandidates(applicationId);
       final query = where.oneFrom('_id', candidates);
-      
+
       await _jobApplicationsCollection.updateOne(
         query,
         {
@@ -942,30 +994,29 @@ class MongoService {
         },
       );
 
-      // Create Notification for Job Seeker
       try {
         final application = await _jobApplicationsCollection.findOne(query);
         if (application != null) {
           final jobSeekerId = application['user_id'];
           final jobId = application['job_id'];
 
-          // Handle Job lookup
           Map<String, dynamic>? job;
           for (final candidate in _idCandidates(jobId)) {
             job = await _jobVacanciesCollection.findOne(where.id(candidate));
             if (job != null) break;
           }
-          
+
           if (job != null) {
             final companyId = job['company_id'];
-            
-            // Handle Company lookup
+
             Map<String, dynamic>? company;
             for (final candidate in _idCandidates(companyId)) {
-              company = await _companiesCollection.findOne(where.id(candidate));
+              company = await _companiesCollection.findOne(
+                where.id(candidate),
+              );
               if (company != null) break;
             }
-            
+
             final companyUserId = company?['user_id'];
 
             String title = "";
@@ -975,20 +1026,29 @@ class MongoService {
             final s = status.toLowerCase();
             if (s == 'ditinjau' || s == 'diproses') {
               title = "Lamaran Ditinjau";
-              message = "Lamaran kamu untuk posisi ${job['title']} sedang ditinjau oleh ${company?['name'] ?? 'perusahaan'}.";
+              message =
+                  "Lamaran kamu untuk posisi ${job['title']} sedang ditinjau oleh ${company?['name'] ?? 'perusahaan'}.";
               type = "application_reviewed";
             } else if (s == 'wawancara') {
               title = "Jadwal Wawancara";
-              final displayDate = extraData?['interview_display'] ?? extraData?['interview_date'] ?? '-';
-              message = "Kamu masuk tahap wawancara untuk ${job['title']}. Jadwal: $displayDate.";
+              final displayDate =
+                  extraData?['interview_display'] ??
+                  extraData?['interview_date'] ??
+                  '-';
+              message =
+                  "Kamu masuk tahap wawancara untuk ${job['title']}. Jadwal: $displayDate.";
               type = "interview_schedule";
-            } else if (s == 'diterima' || s == 'accepted' || s == 'lolos') {
+            } else if (s == 'diterima' ||
+                s == 'accepted' ||
+                s == 'lolos') {
               title = "Lamaran Diterima";
-              message = extraData?['accepted_message'] ?? "Selamat! Kamu diterima di ${company?['name'] ?? 'perusahaan'} untuk posisi ${job['title']}.";
+              message = extraData?['accepted_message'] ??
+                  "Selamat! Kamu diterima di ${company?['name'] ?? 'perusahaan'} untuk posisi ${job['title']}.";
               type = "application_accepted";
             } else if (s == 'ditolak' || s == 'rejected') {
               title = "Lamaran Ditolak";
-              message = "Terima kasih telah melamar. Saat ini lamaran kamu untuk ${job['title']} belum dapat kami lanjutkan.";
+              message =
+                  "Terima kasih telah melamar. Saat ini lamaran kamu untuk ${job['title']} belum dapat kami lanjutkan.";
               type = "application_rejected";
             }
 
