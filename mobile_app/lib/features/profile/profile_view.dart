@@ -184,18 +184,6 @@ class _ProfileViewState extends State<ProfileView> {
             },
           ),
           ProfileMenuItem(
-            icon: Icons.accessibility_new,
-            label: 'Pengaturan Aksesibilitas',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const AccessibilitySettingsView(),
-                ),
-              );
-            },
-          ),
-          ProfileMenuItem(
             icon: Icons.settings,
             label: 'Pengaturan Akun',
             onTap: () {
@@ -215,6 +203,16 @@ class _ProfileViewState extends State<ProfileView> {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const HelpView()),
+              );
+            },
+          ),
+          ProfileMenuItem(
+            icon: Icons.accessibility_new,
+            label: 'Pengaturan Aksesibilitas',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AccessibilitySettingsView()),
               );
             },
           ),

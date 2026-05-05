@@ -4,6 +4,7 @@ import '../../services/mongo_service.dart';
 import '../job_detail/job_detail_page.dart';
 import '../applications/applications_page.dart';
 import '../profile/profile_view.dart';
+import '../profile/accessibility_settings_view.dart';
 
 class HomePage extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -428,6 +429,59 @@ class _HomePageState extends State<HomePage> {
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 ),
               ),
+            ),
+            const SizedBox(height: 12),
+            // Accessibility Toggle Below Search Bar
+            ValueListenableBuilder<bool>(
+              valueListenable: AccessibilityController.highContrastNotifier,
+              builder: (context, isHighContrast, _) {
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isHighContrast ? Colors.black : AppColors.primaryNavy.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    border: isHighContrast ? Border.all(color: Colors.yellow, width: 2) : null,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.visibility,
+                            size: 20,
+                            color: isHighContrast ? Colors.yellow : AppColors.primaryNavy,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Mode Kontras Tinggi',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: isHighContrast ? Colors.yellow : AppColors.primaryNavy,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Switch(
+                        value: isHighContrast,
+                        activeColor: Colors.yellow,
+                        activeTrackColor: Colors.grey.shade800,
+                        onChanged: (value) {
+                          AccessibilityController.setHighContrast(value);
+                          _showCustomSnackBar(
+                            message: value
+                                ? 'Mode Kontras Tinggi Diaktifkan'
+                                : 'Mode Kontras Tinggi Dimatikan',
+                            icon: value ? Icons.visibility : Icons.visibility_off,
+                            backgroundColor: value ? Colors.black : Colors.grey.shade800,
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 24),
             Row(

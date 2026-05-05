@@ -231,29 +231,6 @@ class AccessibilitySettingsView extends StatelessWidget {
                       );
                     },
                   ),
-                  const SizedBox(height: 34),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Mode Kontras Tinggi',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: textColor,
-                        ),
-                      ),
-                      Switch(
-                        value: isHighContrast,
-                        activeColor: AccessibilityTheme.yellow,
-                        activeTrackColor:
-                            AccessibilityTheme.yellow.withOpacity(0.35),
-                        inactiveThumbColor: Colors.white,
-                        inactiveTrackColor: Colors.grey.shade300,
-                        onChanged: AccessibilityController.setHighContrast,
-                      ),
-                    ],
-                  ),
                   const SizedBox(height: 22),
                   Container(
                     width: double.infinity,
