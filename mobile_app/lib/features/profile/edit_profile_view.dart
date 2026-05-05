@@ -236,18 +236,137 @@ class _EditProfileViewState extends State<EditProfileView> {
     }
   }
 
+  Future<bool> _showExitConfirmation(BuildContext context) async {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(28),
+          side: isDark ? const BorderSide(color: Colors.yellow) : BorderSide.none,
+        ),
+        backgroundColor: theme.scaffoldBackgroundColor,
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.warning_amber_rounded,
+                  color: theme.colorScheme.primary,
+                  size: 40,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Batalkan Perubahan?',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.primary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Perubahan yang belum disimpan akan hilang.',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        side: BorderSide(color: theme.colorScheme.primary.withOpacity(0.2)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: Text(
+                        'Tetap Edit',
+                        style: TextStyle(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: theme.colorScheme.primary,
+                        foregroundColor: theme.colorScheme.onPrimary,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: const Text(
+                        'Keluar',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    return result ?? false;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: Text('Edit Profil', style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
-        backgroundColor: theme.appBarTheme.backgroundColor,
-        elevation: 0,
-        iconTheme: IconThemeData(color: theme.colorScheme.primary),
-      ),
-      body: SingleChildScrollView(
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+        final shouldPop = await _showExitConfirmation(context);
+        if (shouldPop && mounted) {
+          Navigator.of(context).pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        appBar: AppBar(
+          title: Text('Edit Profil', style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
+          backgroundColor: theme.appBarTheme.backgroundColor,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back, color: theme.colorScheme.primary),
+            onPressed: () async {
+              final shouldPop = await _showExitConfirmation(context);
+              if (shouldPop && mounted) {
+                Navigator.pop(context);
+              }
+            },
+          ),
+          iconTheme: IconThemeData(color: theme.colorScheme.primary),
+        ),
+        body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Form(
           key: _formKey,
@@ -381,47 +500,6 @@ class _EditProfileViewState extends State<EditProfileView> {
                 )).toList(),
               ),
 
-              const SizedBox(height: 24),
-              Text('CV', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: theme.textTheme.titleMedium?.color)),
-              const SizedBox(height: 8),
-              GestureDetector(
-                onTap: _pickCV,
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 20),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: theme.colorScheme.primary.withOpacity(0.2),
-                      style: BorderStyle.solid, 
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Icon(Icons.cloud_upload_outlined, size: 32, color: theme.colorScheme.primary),
-                      const SizedBox(height: 12),
-                      Text(
-                        _cvFileName ?? 'Upload / Ganti CV',
-                        style: TextStyle(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
-                      ),
-                      if (_cvFileName != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4.0),
-                          child: Text(
-                            'Klik untuk mengganti file',
-                            style: TextStyle(color: theme.textTheme.bodySmall?.color, fontSize: 11),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-
               const SizedBox(height: 40),
               SizedBox(
                 width: double.infinity,
@@ -443,8 +521,9 @@ class _EditProfileViewState extends State<EditProfileView> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildTextField(String label, TextEditingController controller, {int maxLines = 1, TextInputType? keyboardType, String? Function(String?)? validator, bool readOnly = false}) {
     final theme = Theme.of(context);
