@@ -38,9 +38,12 @@ class MongoService {
 
   static DbCollection get _jobVacanciesCollection =>
       db.collection('job_vacancies');
+
   static DbCollection get _savedJobsCollection => db.collection('saved_jobs');
+
   static DbCollection get _jobApplicationsCollection =>
       db.collection('job_applications');
+
   static DbCollection get _companiesCollection => db.collection('companies');
 
   static String getMongoId(dynamic value) {
@@ -67,17 +70,21 @@ class MongoService {
 
   static List<dynamic> _idCandidates(dynamic value) {
     final candidates = <dynamic>{};
+
     if (value == null) return [];
+
     if (value is ObjectId) {
       candidates.add(value);
     }
 
     final str = value.toString();
+
     if (str.isNotEmpty) {
       candidates.add(str);
     }
 
     final parsed = _tryParseObjectId(value);
+
     if (parsed != null) {
       candidates.add(parsed);
     }
@@ -88,6 +95,7 @@ class MongoService {
   static Future<Map<String, dynamic>?> getUserById(dynamic userId) async {
     try {
       await ensureConnected();
+
       if (userId == null) return null;
 
       for (final candidate in _idCandidates(userId)) {
@@ -102,13 +110,19 @@ class MongoService {
     }
   }
 
-  static Future<Map<String, dynamic>?> getUserDetailsByUserId(dynamic userId) async {
+  static Future<Map<String, dynamic>?> getUserDetailsByUserId(
+    dynamic userId,
+  ) async {
     try {
       await ensureConnected();
+
       if (userId == null) return null;
 
       for (final candidate in _idCandidates(userId)) {
-        final details = await userDetails.findOne(where.eq('user_id', candidate));
+        final details = await userDetails.findOne(
+          where.eq('user_id', candidate),
+        );
+
         if (details != null) return details;
       }
 
@@ -119,11 +133,17 @@ class MongoService {
     }
   }
 
-  static Future<Map<String, dynamic>?> getUserDetailsByEmail(String email) async {
+  static Future<Map<String, dynamic>?> getUserDetailsByEmail(
+    String email,
+  ) async {
     try {
       await ensureConnected();
+
       if (email.isEmpty) return null;
-      return await userDetails.findOne(where.eq('email', email));
+
+      return await userDetails.findOne(
+        where.eq('email', email),
+      );
     } catch (e) {
       print('Gagal mengambil user details by email: $e');
       return null;
@@ -140,15 +160,22 @@ class MongoService {
   }) async {
     try {
       await ensureConnected();
+
       if (userId.isEmpty || jobId.isEmpty) return false;
-      final existing =
-          await _savedJobsCollection.findOne({'user_id': userId, 'job_id': jobId});
+
+      final existing = await _savedJobsCollection.findOne({
+        'user_id': userId,
+        'job_id': jobId,
+      });
+
       if (existing != null) return true;
+
       await _savedJobsCollection.insertOne({
         'user_id': userId,
         'job_id': jobId,
         'saved_at': DateTime.now().toUtc(),
       });
+
       return true;
     } catch (e) {
       print('Gagal menyimpan lowongan: $e');
@@ -162,8 +189,14 @@ class MongoService {
   }) async {
     try {
       await ensureConnected();
+
       if (userId.isEmpty || jobId.isEmpty) return false;
-      await _savedJobsCollection.deleteOne({'user_id': userId, 'job_id': jobId});
+
+      await _savedJobsCollection.deleteOne({
+        'user_id': userId,
+        'job_id': jobId,
+      });
+
       return true;
     } catch (e) {
       print('Gagal menghapus lowongan tersimpan: $e');
@@ -177,9 +210,14 @@ class MongoService {
   }) async {
     try {
       await ensureConnected();
+
       if (userId.isEmpty || jobId.isEmpty) return false;
-      final savedJob =
-          await _savedJobsCollection.findOne({'user_id': userId, 'job_id': jobId});
+
+      final savedJob = await _savedJobsCollection.findOne({
+        'user_id': userId,
+        'job_id': jobId,
+      });
+
       return savedJob != null;
     } catch (e) {
       print('Gagal mengecek lowongan tersimpan: $e');
@@ -187,12 +225,20 @@ class MongoService {
     }
   }
 
-  static Future<Set<String>> getSavedJobIds({required String userId}) async {
+  static Future<Set<String>> getSavedJobIds({
+    required String userId,
+  }) async {
     try {
       await ensureConnected();
+
       if (userId.isEmpty) return <String>{};
-      final savedJobs =
-          await _savedJobsCollection.find(where.eq('user_id', userId)).toList();
+
+      final savedJobs = await _savedJobsCollection
+          .find(
+            where.eq('user_id', userId),
+          )
+          .toList();
+
       return savedJobs
           .map((item) => item['job_id']?.toString() ?? '')
           .where((id) => id.isNotEmpty)
@@ -208,39 +254,58 @@ class MongoService {
   }) async {
     try {
       await ensureConnected();
+
       if (userId.isEmpty) return [];
+
       final savedJobs = await _savedJobsCollection
-          .find(where.eq('user_id', userId).sortBy('saved_at', descending: true))
+          .find(
+            where.eq('user_id', userId).sortBy(
+                  'saved_at',
+                  descending: true,
+                ),
+          )
           .toList();
+
       if (savedJobs.isEmpty) return [];
 
       final savedAtByJobId = <String, dynamic>{};
       final savedJobIds = <String>[];
+
       for (final savedJob in savedJobs) {
         final jobId = savedJob['job_id']?.toString() ?? '';
+
         if (jobId.isNotEmpty) {
           savedJobIds.add(jobId);
           savedAtByJobId[jobId] = savedJob['saved_at'];
         }
       }
+
       if (savedJobIds.isEmpty) return [];
 
-      final activeJobs =
-          await _jobVacanciesCollection.find(where.eq('status', 'active')).toList();
+      final activeJobs = await _jobVacanciesCollection
+          .find(
+            where.eq('status', 'active'),
+          )
+          .toList();
+
       final result = activeJobs
           .where((job) => savedJobIds.contains(getMongoId(job['_id'])))
           .map<Map<String, dynamic>>((job) {
         final jobMap = Map<String, dynamic>.from(job);
         final jobId = getMongoId(jobMap['_id']);
+
         jobMap['saved_at'] = savedAtByJobId[jobId];
+
         return jobMap;
       }).toList();
 
       result.sort((a, b) {
         final aIndex = savedJobIds.indexOf(getMongoId(a['_id']));
         final bIndex = savedJobIds.indexOf(getMongoId(b['_id']));
+
         return aIndex.compareTo(bIndex);
       });
+
       return result;
     } catch (e) {
       print('Gagal mengambil lowongan tersimpan: $e');
@@ -254,9 +319,14 @@ class MongoService {
   }) async {
     try {
       await ensureConnected();
+
       if (userId.isEmpty || jobId.isEmpty) return false;
-      final existing =
-          await _jobApplicationsCollection.findOne({'user_id': userId, 'job_id': jobId});
+
+      final existing = await _jobApplicationsCollection.findOne({
+        'user_id': userId,
+        'job_id': jobId,
+      });
+
       return existing != null;
     } catch (e) {
       print('Gagal mengecek lamaran: $e');
@@ -269,12 +339,21 @@ class MongoService {
   }) async {
     try {
       await ensureConnected();
+
       final userId = applicationData['user_id']?.toString() ?? '';
       final jobId = applicationData['job_id']?.toString() ?? '';
+
       if (userId.isEmpty || jobId.isEmpty) return false;
-      final alreadyApplied = await hasAppliedJob(userId: userId, jobId: jobId);
+
+      final alreadyApplied = await hasAppliedJob(
+        userId: userId,
+        jobId: jobId,
+      );
+
       if (alreadyApplied) return false;
+
       await _jobApplicationsCollection.insertOne(applicationData);
+
       return true;
     } catch (e) {
       print('Gagal mengirim lamaran: $e');
@@ -287,10 +366,18 @@ class MongoService {
   }) async {
     try {
       await ensureConnected();
+
       if (userId.isEmpty) return [];
+
       final applications = await _jobApplicationsCollection
-          .find(where.eq('user_id', userId).sortBy('created_at', descending: true))
+          .find(
+            where.eq('user_id', userId).sortBy(
+                  'created_at',
+                  descending: true,
+                ),
+          )
           .toList();
+
       return applications.cast<Map<String, dynamic>>();
     } catch (e) {
       print('Gagal mengambil data lamaran: $e');
@@ -316,6 +403,34 @@ class MongoService {
     } catch (e) {
       print('Gagal mengambil data company: $e');
       return null;
+    }
+  }
+
+  static Future<bool> updateCompanyProfile({
+    required String companyId,
+    required Map<String, dynamic> data,
+  }) async {
+    try {
+      await ensureConnected();
+
+      if (companyId.isEmpty) return false;
+
+      await _companiesCollection.updateOne(
+        where.id(ObjectId.fromHexString(companyId)),
+        modify
+            .set('company_name', data['company_name'])
+            .set('description', data['description'])
+            .set('address', data['address'])
+            .set('email', data['email'])
+            .set('phone', data['phone'])
+            .set('field', data['field'] ?? '')
+            .set('updated_at', DateTime.now().toUtc()),
+      );
+
+      return true;
+    } catch (e) {
+      print('Gagal update profil company: $e');
+      return false;
     }
   }
 
@@ -375,8 +490,8 @@ class MongoService {
   }
 
   static Future<bool> updateCompanyJob({
-  required String jobId,
-  required Map<String, dynamic> data,
+    required String jobId,
+    required Map<String, dynamic> data,
   }) async {
     try {
       await ensureConnected();
@@ -404,8 +519,8 @@ class MongoService {
   }
 
   static Future<bool> updateJobStatus({
-  required String jobId,
-  required String status,
+    required String jobId,
+    required String status,
   }) async {
     try {
       await ensureConnected();
@@ -414,9 +529,10 @@ class MongoService {
 
       await _jobVacanciesCollection.updateOne(
         where.id(ObjectId.fromHexString(jobId)),
-        modify
-            .set('status', status)
-            .set('updated_at', DateTime.now().toUtc()),
+        modify.set('status', status).set(
+              'updated_at',
+              DateTime.now().toUtc(),
+            ),
       );
 
       return true;
@@ -427,7 +543,7 @@ class MongoService {
   }
 
   static Future<List<Map<String, dynamic>>> getApplicantsByJob({
-  required String jobId,
+    required String jobId,
   }) async {
     try {
       await ensureConnected();
@@ -436,9 +552,10 @@ class MongoService {
 
       final applicants = await _jobApplicationsCollection
           .find(
-            where
-                .eq('job_id', jobId)
-                .sortBy('created_at', descending: true),
+            where.eq('job_id', jobId).sortBy(
+                  'created_at',
+                  descending: true,
+                ),
           )
           .toList();
 
@@ -450,29 +567,30 @@ class MongoService {
   }
 
   static Future<bool> updateApplicationStatus({
-  required String applicationId,
-  required String status,
-    }) async {
-      try {
-        await ensureConnected();
+    required String applicationId,
+    required String status,
+  }) async {
+    try {
+      await ensureConnected();
 
-        if (applicationId.isEmpty) return false;
+      if (applicationId.isEmpty) return false;
 
-        await _jobApplicationsCollection.updateOne(
-          where.id(ObjectId.fromHexString(applicationId)),
-          modify
-              .set('status', status)
-              .set('updated_at', DateTime.now().toUtc()),
-        );
+      await _jobApplicationsCollection.updateOne(
+        where.id(ObjectId.fromHexString(applicationId)),
+        modify.set('status', status).set(
+              'updated_at',
+              DateTime.now().toUtc(),
+            ),
+      );
 
-        return true;
-      } catch (e) {
-        print('Gagal update status pelamar: $e');
-        return false;
-      }
+      return true;
+    } catch (e) {
+      print('Gagal update status pelamar: $e');
+      return false;
     }
+  }
 
-    static Future<bool> insertJobVacancy({
+  static Future<bool> insertJobVacancy({
     required Map<String, dynamic> data,
   }) async {
     try {
@@ -491,6 +609,7 @@ class MongoService {
       }
 
       await _jobVacanciesCollection.insertOne(jobData);
+
       return true;
     } catch (e) {
       print('Gagal menambahkan lowongan: $e');
@@ -504,9 +623,10 @@ class MongoService {
 
       final jobs = await _jobVacanciesCollection
           .find(
-            where
-                .eq('status', 'active')
-                .sortBy('created_at', descending: true),
+            where.eq('status', 'active').sortBy(
+                  'created_at',
+                  descending: true,
+                ),
           )
           .toList();
 
