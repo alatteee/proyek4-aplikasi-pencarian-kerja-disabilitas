@@ -90,6 +90,15 @@ class _EditProfileViewState extends State<EditProfileView> {
     }
   }
 
+  bool _isBase64(String str) {
+    try {
+      base64Decode(str);
+      return str.length % 4 == 0 && !str.contains(' ');
+    } catch (e) {
+      return false;
+    }
+  }
+
   @override
   void dispose() {
     _namaLengkapController.dispose();
@@ -258,9 +267,11 @@ class _EditProfileViewState extends State<EditProfileView> {
                           borderRadius: BorderRadius.circular(24),
                           image: _profilePhotoPath != null && _profilePhotoPath!.isNotEmpty
                               ? DecorationImage(
-                                  image: _profilePhotoPath!.startsWith('/') 
-                                    ? FileImage(File(_profilePhotoPath!)) as ImageProvider
-                                    : MemoryImage(base64Decode(_profilePhotoPath!)),
+                                  image: _isBase64(_profilePhotoPath!)
+                                      ? MemoryImage(base64Decode(_profilePhotoPath!)) as ImageProvider
+                                      : (_profilePhotoPath!.startsWith('http')
+                                          ? NetworkImage(_profilePhotoPath!)
+                                          : FileImage(File(_profilePhotoPath!))) as ImageProvider,
                                   fit: BoxFit.cover,
                                 )
                               : null,

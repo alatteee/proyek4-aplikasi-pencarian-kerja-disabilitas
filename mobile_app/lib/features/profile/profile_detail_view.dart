@@ -36,6 +36,15 @@ class _ProfileDetailViewState extends State<ProfileDetailView> {
     });
   }
 
+  bool _isBase64(String str) {
+    try {
+      base64Decode(str);
+      return str.length % 4 == 0 && !str.contains(' ');
+    } catch (e) {
+      return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -102,19 +111,11 @@ class _ProfileDetailViewState extends State<ProfileDetailView> {
                       userDetails!['profile_photo'].toString().isNotEmpty
                   ? ClipRRect(
                       borderRadius: BorderRadius.circular(20),
-                      child: userDetails!['profile_photo'].toString().startsWith('/') 
-                        ? Image.file(File(userDetails!['profile_photo']), fit: BoxFit.cover)
-                        : (() {
-                            try {
-                              return Image.memory(base64Decode(userDetails!['profile_photo']), fit: BoxFit.cover);
-                            } catch (_) {
-                              return Icon(
-                                Icons.person,
-                                size: 50,
-                                color: theme.colorScheme.primary,
-                              );
-                            }
-                          })(),
+                      child: _isBase64(userDetails!['profile_photo'])
+                        ? Image.memory(base64Decode(userDetails!['profile_photo']), fit: BoxFit.cover)
+                        : (userDetails!['profile_photo'].toString().startsWith('http')
+                            ? Image.network(userDetails!['profile_photo'], fit: BoxFit.cover)
+                            : Image.file(File(userDetails!['profile_photo']), fit: BoxFit.cover)),
                     )
                   : Icon(
                       Icons.person,
