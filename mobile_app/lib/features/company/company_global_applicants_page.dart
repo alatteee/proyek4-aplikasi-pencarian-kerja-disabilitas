@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../services/mongo_service.dart';
 import 'company_applicant_detail_page.dart';
 
@@ -23,9 +24,85 @@ class _CompanyGlobalApplicantsPageState
   static const Color textGrey = Color(0xFF4A5870);
   static const Color lightBlue = Color(0xFFEAF0FF);
 
+  static const Color activeGreenBg = Color(0xFFD4F0DD);
+  static const Color activeGreenText = Color(0xFF18A64A);
+  static const Color orangeBg = Color(0xFFFFE4B8);
+  static const Color orangeText = Color(0xFFF59E0B);
+  static const Color redBg = Color(0xFFF8D1D3);
+  static const Color redText = Color(0xFFE2262C);
+  static const Color greyBg = Color(0xFFE5E5E5);
+  static const Color greyText = Color(0xFF5B6472);
+
   String selectedFilter = 'Semua';
   String searchQuery = '';
+
   final TextEditingController _searchController = TextEditingController();
+
+  String _normalizeStatus(String status) {
+    final value = status.toLowerCase();
+
+    if (value == 'pending' || value == 'dikirim') return 'dikirim';
+
+    if (value == 'reviewed' ||
+        value == 'diproses' ||
+        value == 'ditinjau') {
+      return 'ditinjau';
+    }
+
+    if (value == 'interview' || value == 'wawancara') return 'wawancara';
+
+    if (value == 'accepted' ||
+        value == 'diterima' ||
+        value == 'lolos' ||
+        value == 'lolos berkas') {
+      return 'diterima';
+    }
+
+    if (value == 'rejected' || value == 'ditolak') return 'ditolak';
+
+    return 'dikirim';
+  }
+
+  String _statusLabel(String status) {
+    switch (_normalizeStatus(status)) {
+      case 'dikirim':
+        return 'Dikirim';
+      case 'ditinjau':
+        return 'Ditinjau';
+      case 'wawancara':
+        return 'Wawancara';
+      case 'diterima':
+        return 'Diterima';
+      case 'ditolak':
+        return 'Ditolak';
+      default:
+        return 'Dikirim';
+    }
+  }
+
+  Color _statusBg(String status) {
+    final normalized = _normalizeStatus(status);
+
+    if (normalized == 'dikirim') return greyBg;
+    if (normalized == 'ditinjau') return orangeBg;
+    if (normalized == 'wawancara') return lightBlue;
+    if (normalized == 'diterima') return activeGreenBg;
+    if (normalized == 'ditolak') return redBg;
+
+    return greyBg;
+  }
+
+  Color _statusText(String status) {
+    final normalized = _normalizeStatus(status);
+
+    if (normalized == 'dikirim') return greyText;
+    if (normalized == 'ditinjau') return orangeText;
+    if (normalized == 'wawancara') return navy;
+    if (normalized == 'diterima') return activeGreenText;
+    if (normalized == 'ditolak') return redText;
+
+    return greyText;
+  }
 
   List<Map<String, dynamic>> get filteredApplicants {
     return widget.applicants.where((applicant) {
@@ -36,15 +113,10 @@ class _CompanyGlobalApplicantsPageState
 
       final matchSearch = name.contains(query) || jobTitle.contains(query);
 
+      final normalizedStatus = _normalizeStatus(status);
+
       final matchFilter = selectedFilter == 'Semua' ||
-          (selectedFilter == 'Diproses' &&
-              (status == 'pending' ||
-                  status == 'reviewed' ||
-                  status == 'diproses')) ||
-          (selectedFilter == 'Lolos Berkas' &&
-              (status == 'accepted' ||
-                  status == 'diterima' ||
-                  status == 'lolos'));
+          selectedFilter.toLowerCase() == normalizedStatus;
 
       return matchSearch && matchFilter;
     }).toList();
@@ -71,9 +143,11 @@ class _CompanyGlobalApplicantsPageState
 
   String _getInitials(String name) {
     final cleanName = name.trim();
+
     if (cleanName.isEmpty) return '?';
 
     final parts = cleanName.split(' ');
+
     if (parts.length == 1) return parts.first[0].toUpperCase();
 
     return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
@@ -83,6 +157,7 @@ class _CompanyGlobalApplicantsPageState
     if (value == null) return '-';
 
     DateTime? date;
+
     if (value is DateTime) {
       date = value;
     } else {
@@ -109,29 +184,6 @@ class _CompanyGlobalApplicantsPageState
     return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 
-  String _statusLabel(String status) {
-    switch (status.toLowerCase()) {
-      case 'accepted':
-      case 'diterima':
-      case 'lolos':
-        return 'Lolos Berkas';
-      default:
-        return 'Diproses';
-    }
-  }
-
-  Color _statusBg(String status) {
-    return _statusLabel(status) == 'Lolos Berkas'
-        ? Colors.green.withOpacity(0.15)
-        : Colors.orange.withOpacity(0.15);
-  }
-
-  Color _statusText(String status) {
-    return _statusLabel(status) == 'Lolos Berkas'
-        ? Colors.green
-        : Colors.orange;
-  }
-
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -140,11 +192,17 @@ class _CompanyGlobalApplicantsPageState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildHeader(),
+
           const SizedBox(height: 24),
+
           _buildSearchBox(),
+
           const SizedBox(height: 18),
+
           _buildFilterButtons(),
+
           const SizedBox(height: 24),
+
           Expanded(
             child: filteredApplicants.isEmpty
                 ? _buildEmptyState()
@@ -223,46 +281,52 @@ class _CompanyGlobalApplicantsPageState
   }
 
   Widget _buildFilterButtons() {
-    final filters = ['Semua', 'Diproses', 'Lolos Berkas'];
+    final filters = [
+      'Semua',
+      'Dikirim',
+      'Ditinjau',
+      'Wawancara',
+      'Diterima',
+      'Ditolak',
+    ];
 
-    return Row(
-      children: filters.map((filter) {
-        final isSelected = selectedFilter == filter;
+    return SizedBox(
+      height: 40,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: filters.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (context, index) {
+          final filter = filters[index];
+          final isSelected = selectedFilter == filter;
 
-        return Expanded(
-          child: Padding(
-            padding: EdgeInsets.only(
-              right: filter == 'Lolos Berkas' ? 0 : 10,
-            ),
-            child: GestureDetector(
-              onTap: () => setState(() => selectedFilter = filter),
-              child: Container(
-                height: 44,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: isSelected ? navy : Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: navy,
-                    width: 1.4,
-                  ),
+          return GestureDetector(
+            onTap: () => setState(() => selectedFilter = filter),
+            child: Container(
+              constraints: const BoxConstraints(minWidth: 96),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: isSelected ? navy : Colors.white,
+                borderRadius: BorderRadius.circular(13),
+                border: Border.all(
+                  color: navy,
+                  width: 1.3,
                 ),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    filter,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
-                      color: isSelected ? Colors.white : navy,
-                    ),
-                  ),
+              ),
+              child: Text(
+                filter,
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w900,
+                  color: isSelected ? Colors.white : navy,
                 ),
               ),
             ),
-          ),
-        );
-      }).toList(),
+          );
+        },
+      ),
     );
   }
 
@@ -272,7 +336,7 @@ class _CompanyGlobalApplicantsPageState
     final name = applicant['full_name']?.toString() ?? 'Pelamar';
     final jobTitle =
         applicant['job_title']?.toString() ?? job['title']?.toString() ?? '-';
-    final status = applicant['status']?.toString() ?? 'pending';
+    final status = applicant['status']?.toString() ?? 'dikirim';
     final date = _formatDate(applicant['created_at']);
 
     return GestureDetector(
@@ -321,7 +385,9 @@ class _CompanyGlobalApplicantsPageState
                 ),
               ),
             ),
+
             const SizedBox(width: 18),
+
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -336,7 +402,9 @@ class _CompanyGlobalApplicantsPageState
                       color: navy,
                     ),
                   ),
+
                   const SizedBox(height: 6),
+
                   Text(
                     jobTitle,
                     maxLines: 1,
@@ -350,7 +418,9 @@ class _CompanyGlobalApplicantsPageState
                 ],
               ),
             ),
+
             const SizedBox(width: 12),
+
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -362,12 +432,13 @@ class _CompanyGlobalApplicantsPageState
                     fontWeight: FontWeight.w700,
                   ),
                 ),
+
                 const SizedBox(height: 10),
+
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
+                  width: 92,
+                  height: 30,
+                  alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: _statusBg(status),
                     borderRadius: BorderRadius.circular(14),
@@ -375,7 +446,7 @@ class _CompanyGlobalApplicantsPageState
                   child: Text(
                     _statusLabel(status),
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 11.5,
                       fontWeight: FontWeight.w900,
                       color: _statusText(status),
                     ),

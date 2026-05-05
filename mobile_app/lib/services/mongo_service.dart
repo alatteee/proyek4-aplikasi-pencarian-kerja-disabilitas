@@ -624,18 +624,45 @@ class MongoService {
   static Future<bool> updateApplicationStatus({
     required String applicationId,
     required String status,
+    Map<String, dynamic>? extraData,
   }) async {
     try {
       await ensureConnected();
 
       if (applicationId.isEmpty) return false;
 
+      final now = DateTime.now().toUtc();
+
+      final updateData = <String, dynamic>{
+        'status': status,
+        'updated_at': now,
+        ...?extraData,
+      };
+
+      if (status == 'ditinjau') {
+        updateData['reviewed_at'] = now;
+        updateData['processed_at'] = now;
+      }
+
+      if (status == 'wawancara') {
+        updateData['interview_status_updated_at'] = now;
+      }
+
+      if (status == 'diterima') {
+        updateData['accepted_at'] = now;
+        updateData['accepted_status_updated_at'] = now;
+      }
+
+      if (status == 'ditolak') {
+        updateData['rejected_at'] = now;
+        updateData['rejected_status_updated_at'] = now;
+      }
+
       await _jobApplicationsCollection.updateOne(
         where.id(ObjectId.fromHexString(applicationId)),
-        modify.set('status', status).set(
-              'updated_at',
-              DateTime.now().toUtc(),
-            ),
+        {
+          r'$set': updateData,
+        },
       );
 
       return true;
