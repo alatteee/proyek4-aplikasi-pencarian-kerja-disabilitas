@@ -162,14 +162,8 @@ class _CompanyGlobalApplicantsPageState
   }
 
   Widget _buildHeader() {
-    return Row(
-      children: const [
-        Icon(
-          Icons.arrow_back,
-          size: 34,
-          color: navy,
-        ),
-        SizedBox(width: 18),
+    return const Row(
+      children: [
         Text(
           'Pelamar',
           style: TextStyle(

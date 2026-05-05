@@ -329,24 +329,9 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
   }
 
   Widget _buildHeader() {
-    return Row(
+    return const Row(
       children: [
-        GestureDetector(
-          onTap: () {
-            if (Navigator.canPop(context)) {
-              Navigator.pop(context);
-            }
-          },
-          child: const Icon(
-            Icons.arrow_back,
-            color: navy,
-            size: 30,
-          ),
-        ),
-
-        const SizedBox(width: 18),
-
-        const Expanded(
+        Expanded(
           child: Text(
             'Profil Perusahaan',
             maxLines: 1,
