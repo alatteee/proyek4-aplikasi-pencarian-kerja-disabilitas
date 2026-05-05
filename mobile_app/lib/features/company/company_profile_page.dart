@@ -40,7 +40,13 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
       isLoading = true;
     });
 
-    final data = await MongoService.getCompanyByName(widget.companyName);
+    // Get userId from userData
+    final userId = widget.userData['_id'];
+    
+    // Fetch company using user_id instead of company name
+    final data = userId != null 
+        ? await MongoService.getCompanyByUserId(userId)
+        : await MongoService.getCompanyByName(widget.companyName);
 
     if (!mounted) return;
 

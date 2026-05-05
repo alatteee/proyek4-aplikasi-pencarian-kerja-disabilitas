@@ -75,7 +75,7 @@ class _SignUpViewState extends State<SignUpView> {
 
     // Panggil Service Signup Controller
     final String role = _isJobSeeker ? 'job_seeker' : 'company';
-    final String? resultError = await AuthController.signUp(
+    final result = await AuthController.signUp(
       username: username,
       email: email,
       phone: phone,
@@ -85,10 +85,7 @@ class _SignUpViewState extends State<SignUpView> {
 
     setState(() { _isLoading = false; });
 
-    if (resultError != null) {
-      if (!mounted) return;
-      _showError(resultError);
-    } else {
+    if (result != null && result['error'] == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Pendaftaran berhasil! Silakan Log In.'), backgroundColor: Colors.green),
@@ -97,6 +94,10 @@ class _SignUpViewState extends State<SignUpView> {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const LoginView()),
       );
+    } else {
+      if (!mounted) return;
+      final errorMsg = result?['error']?.toString() ?? 'Pendaftaran gagal';
+      _showError(errorMsg);
     }
   }
 

@@ -408,6 +408,59 @@ class MongoService {
     }
   }
 
+  static Future<Map<String, dynamic>?> getCompanyByUserId(
+    dynamic userId,
+  ) async {
+    try {
+      await ensureConnected();
+
+      if (userId == null) return null;
+
+      for (final candidate in _idCandidates(userId)) {
+        final company = await _companiesCollection.findOne(
+          where.eq('user_id', candidate),
+        );
+
+        if (company != null) return company;
+      }
+
+      return null;
+    } catch (e) {
+      print('Gagal mengambil data company by user id: $e');
+      return null;
+    }
+  }
+
+  static Future<bool> createCompany({
+    required dynamic userId,
+    required String companyName,
+    required String email,
+    required String phone,
+  }) async {
+    try {
+      await ensureConnected();
+
+      if (userId == null || companyName.isEmpty) return false;
+
+      await _companiesCollection.insertOne({
+        'user_id': userId,
+        'company_name': companyName,
+        'email': email,
+        'phone': phone,
+        'description': '',
+        'address': '',
+        'field': 'Perusahaan',
+        'created_at': DateTime.now().toUtc(),
+        'updated_at': DateTime.now().toUtc(),
+      });
+
+      return true;
+    } catch (e) {
+      print('Gagal membuat company record: $e');
+      return false;
+    }
+  }
+
   static Future<bool> updateCompanyProfile({
     required String companyId,
     required Map<String, dynamic> data,

@@ -51,8 +51,22 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
       isLoading = true;
     });
 
-    final companyName = _getCompanyName();
-    final companyData = await MongoService.getCompanyByName(companyName);
+    // Get userId from userData
+    final userId = widget.userData['_id'];
+    
+    if (userId == null) {
+      if (!mounted) return;
+      setState(() {
+        company = null;
+        companyJobs = [];
+        applicants = [];
+        isLoading = false;
+      });
+      return;
+    }
+
+    // Fetch company using user_id
+    final companyData = await MongoService.getCompanyByUserId(userId);
 
     if (companyData == null) {
       if (!mounted) return;

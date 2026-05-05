@@ -32,7 +32,7 @@ class AuthController {
   }
 
   // Logic Sign Up
-  static Future<String?> signUp({
+  static Future<Map<String, dynamic>?> signUp({
     required String username,
     required String email,
     required String phone,
@@ -42,17 +42,17 @@ class AuthController {
     try {
       // 1. Cek Email & Phone duplication
       if (await isEmailExists(email)) {
-        return 'Email sudah terdaftar. Gunakan email lain.';
+        return {'error': 'Email sudah terdaftar. Gunakan email lain.'};
       }
       if (await isPhoneExists(phone)) {
-        return 'Nomor HP sudah terdaftar. Gunakan nomor lain.';
+        return {'error': 'Nomor HP sudah terdaftar. Gunakan nomor lain.'};
       }
 
       // 2. Hash Password
       final passwordHash = hashPassword(password);
       
-      // 3. Insert Database
-      await MongoService.users.insertOne({
+      // 3. Insert User to Database
+      final result = await MongoService.users.insertOne({
         "username": username,
         "email": email,
         "phone": phone,
@@ -62,9 +62,29 @@ class AuthController {
         "updated_at": DateTime.now()
       });
 
-      return null; // Return null jika sukses
+      // 4. Get the inserted user ID
+      final userId = result.id;
+
+      // 5. If company, create company record
+      if (role == 'company') {
+        await MongoService.createCompany(
+          userId: userId,
+          companyName: username,
+          email: email,
+          phone: phone,
+        );
+      }
+
+      // 6. Return user data with ID
+      return {
+        '_id': userId,
+        'username': username,
+        'email': email,
+        'phone': phone,
+        'role': role,
+      };
     } catch (e) {
-      return 'Gagal melakukan pendaftaran: \'$e\'';
+      return {'error': 'Gagal melakukan pendaftaran: \'$e\''};
     } 
   }
 
