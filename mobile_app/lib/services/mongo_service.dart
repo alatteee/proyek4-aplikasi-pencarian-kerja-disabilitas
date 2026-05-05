@@ -16,14 +16,22 @@ class MongoService {
 
     if (_isDbOpen) return;
 
-    db = await Db.create(uri);
-    await db.open();
+    try {
+      db = await Db.create(uri);
+      await db.open();
 
-    users = db.collection('users');
-    userDetails = db.collection('user_details');
-    cvs = db.collection('cvs');
+      users = db.collection('users');
+      userDetails = db.collection('user_details');
+      cvs = db.collection('cvs');
 
-    print('✅ MongoDB Connected');
+      print('✅ MongoDB Connected');
+    } catch (e) {
+      print('❌ Gagal koneksi ke MongoDB: $e');
+      // Force reset jika gagal agar bisa retry
+      try {
+        await db.close();
+      } catch (_) {}
+    }
   }
 
   static bool get _isDbOpen {
@@ -35,7 +43,10 @@ class MongoService {
   }
 
   static Future<void> ensureConnected() async {
-    if (!_isDbOpen) await connect();
+    if (!_isDbOpen) {
+      print('🔄 Membuka kembali koneksi MongoDB yang terputus...');
+      await connect();
+    }
   }
 
   static DbCollection get _jobVacanciesCollection =>
@@ -64,19 +75,29 @@ class MongoService {
     try {
       await ensureConnected();
 
-      await _notificationsCollection.insertOne({
-        'receiver_id': receiverId,
+      // Ensure IDs are processed to stay consistent with Atlas storage patterns
+      final rId = _tryParseObjectId(receiverId) ?? receiverId;
+      final sId = _tryParseObjectId(senderId) ?? senderId;
+      final aId = _tryParseObjectId(applicationId) ?? applicationId;
+      final jId = _tryParseObjectId(jobId) ?? jobId;
+
+      final notificationData = {
+        'receiver_id': rId,
         'receiver_role': receiverRole,
-        'sender_id': senderId,
+        'sender_id': sId,
         'sender_role': senderRole,
-        'application_id': applicationId,
-        'job_id': jobId,
+        'application_id': aId,
+        'job_id': jId,
         'title': title,
         'message': message,
         'type': type,
         'is_read': false,
         'created_at': DateTime.now().toUtc(),
-      });
+      };
+
+      print('DEBUG: Inserting Notification: $notificationData');
+      
+      await _notificationsCollection.insertOne(notificationData);
 
       return true;
     } catch (e) {
@@ -92,10 +113,12 @@ class MongoService {
     try {
       await ensureConnected();
 
+      final candidates = _idCandidates(receiverId);
+
       final notifications = await _notificationsCollection
           .find(
             where
-                .eq('receiver_id', receiverId)
+                .oneFrom('receiver_id', candidates)
                 .eq('receiver_role', receiverRole)
                 .sortBy('created_at', descending: true),
           )
@@ -116,8 +139,12 @@ class MongoService {
 
       if (notificationId.isEmpty) return false;
 
+      // Use candidates for notification ID just in case
+      final candidates = _idCandidates(notificationId);
+      final query = where.oneFrom('_id', candidates);
+
       await _notificationsCollection.updateOne(
-        where.id(ObjectId.fromHexString(notificationId)),
+        query,
         modify.set('is_read', true).set('read_at', DateTime.now().toUtc()),
       );
 
@@ -135,9 +162,11 @@ class MongoService {
     try {
       await ensureConnected();
 
+      final candidates = _idCandidates(receiverId);
+
       final count = await _notificationsCollection.count(
         where
-            .eq('receiver_id', receiverId)
+            .oneFrom('receiver_id', candidates)
             .eq('receiver_role', receiverRole)
             .eq('is_read', false),
       );
@@ -232,6 +261,38 @@ class MongoService {
       return null;
     } catch (e) {
       print('Gagal mengambil user details: $e');
+      return null;
+    }
+  }
+
+  static Future<Map<String, dynamic>?> getApplicationById(dynamic applicationId) async {
+    try {
+      await ensureConnected();
+      if (applicationId == null) return null;
+
+      for (final candidate in _idCandidates(applicationId)) {
+        final app = await _jobApplicationsCollection.findOne(where.id(candidate));
+        if (app != null) return app;
+      }
+      return null;
+    } catch (e) {
+      print('Gagal mengambil lamaran: $e');
+      return null;
+    }
+  }
+
+  static Future<Map<String, dynamic>?> getJobById(dynamic jobId) async {
+    try {
+      await ensureConnected();
+      if (jobId == null) return null;
+
+      for (final candidate in _idCandidates(jobId)) {
+        final job = await _jobVacanciesCollection.findOne(where.id(candidate));
+        if (job != null) return job;
+      }
+      return null;
+    } catch (e) {
+      print('Gagal mengambil lowongan: $e');
       return null;
     }
   }
@@ -417,18 +478,20 @@ class MongoService {
   }
 
   static Future<bool> hasAppliedJob({
-    required String userId,
-    required String jobId,
+    required dynamic userId,
+    required dynamic jobId,
   }) async {
     try {
       await ensureConnected();
 
-      if (userId.isEmpty || jobId.isEmpty) return false;
+      if (userId == null || jobId == null) return false;
 
-      final existing = await _jobApplicationsCollection.findOne({
-        'user_id': userId,
-        'job_id': jobId,
-      });
+      final userCandidates = _idCandidates(userId);
+      final jobCandidates = _idCandidates(jobId);
+
+      final existing = await _jobApplicationsCollection.findOne(
+        where.oneFrom('user_id', userCandidates).oneFrom('job_id', jobCandidates),
+      );
 
       return existing != null;
     } catch (e) {
@@ -446,24 +509,48 @@ class MongoService {
       final userId = applicationData['user_id'];
       final jobId = applicationData['job_id'];
 
-      if (userId == null || jobId == null) return false;
+      if (userId == null || jobId == null) {
+        print('DEBUG: userId or jobId is null');
+        return false;
+      }
 
+      // Convert critical IDs to handle potential type mismatches in queries
+      final uId = _tryParseObjectId(userId) ?? userId;
+      final jId = _tryParseObjectId(jobId) ?? jobId;
+
+      // 1. Check if already applied using flexible ID candidates
       final alreadyApplied = await hasAppliedJob(
-        userId: userId.toString(),
-        jobId: jobId.toString(),
+        userId: uId,
+        jobId: jId,
       );
 
-      if (alreadyApplied) return false;
+      if (alreadyApplied) {
+        print('DEBUG: User already applied to this job');
+        return false;
+      }
 
-      final result = await _jobApplicationsCollection.insertOne(applicationData);
+      // 2. Prepare data for insertion (ensure consistent ObjectId format for searching later)
+      final finalAppData = Map<String, dynamic>.from(applicationData);
+      finalAppData['user_id'] = uId;
+      finalAppData['job_id'] = jId;
+
+      final result = await _jobApplicationsCollection.insertOne(finalAppData);
       final insertedId = result.id;
 
-      // Create Notification for Company
+      print('DEBUG: Application inserted with ID: $insertedId');
+
+      // 3. Create Notification for Company
       try {
-        final job = await _jobVacanciesCollection.findOne(where.id(jobId is String ? ObjectId.fromHexString(jobId) : jobId));
+        // Find the job to get the company_id
+        final job = await getJobById(jId);
+        
         if (job != null) {
           final companyId = job['company_id'];
-          final company = await _companiesCollection.findOne(where.id(companyId is String ? ObjectId.fromHexString(companyId) : companyId));
+          final companyCandidates = _idCandidates(companyId);
+          
+          final company = await _companiesCollection.findOne(
+            where.oneFrom('_id', companyCandidates)
+          );
           
           if (company != null && company['user_id'] != null) {
             final companyUserId = company['user_id'];
@@ -472,18 +559,23 @@ class MongoService {
             await createNotification(
               receiverId: companyUserId,
               receiverRole: 'company',
-              senderId: userId,
+              senderId: uId,
               senderRole: 'job_seeker',
               applicationId: insertedId,
-              jobId: jobId,
+              jobId: jId,
               title: 'Pelamar Baru',
               message: message,
               type: 'new_application',
             );
+            print('DEBUG: Notification to company created');
+          } else {
+            print('DEBUG: Company or Company User ID not found');
           }
+        } else {
+          print('DEBUG: Job not found for ID: $jId');
         }
-      } catch (e) {
-        print('Gagal membuat notifikasi lamaran baru: $e');
+      } catch (ne) {
+        print('DEBUG Error creating notification: $ne');
       }
 
       return true;
@@ -494,16 +586,18 @@ class MongoService {
   }
 
   static Future<List<Map<String, dynamic>>> getUserApplications({
-    required String userId,
+    required dynamic userId,
   }) async {
     try {
       await ensureConnected();
 
-      if (userId.isEmpty) return [];
+      if (userId == null) return [];
+
+      final candidates = _idCandidates(userId);
 
       final applications = await _jobApplicationsCollection
           .find(
-            where.eq('user_id', userId).sortBy(
+            where.oneFrom('user_id', candidates).sortBy(
                   'created_at',
                   descending: true,
                 ),
@@ -620,17 +714,19 @@ class MongoService {
   }
 
   static Future<List<Map<String, dynamic>>> getCompanyJobs({
-    required String companyId,
+    required dynamic companyId,
   }) async {
     try {
       await ensureConnected();
 
-      if (companyId.isEmpty) return [];
+      if (companyId == null) return [];
+
+      final candidates = _idCandidates(companyId);
 
       final jobs = await _jobVacanciesCollection
           .find(
             where
-                .eq('company_id', ObjectId.fromHexString(companyId))
+                .oneFrom('company_id', candidates)
                 .sortBy('created_at', descending: true),
           )
           .toList();
@@ -643,26 +739,27 @@ class MongoService {
   }
 
   static Future<List<Map<String, dynamic>>> getCompanyApplicants({
-    required String companyId,
+    required dynamic companyId,
   }) async {
     try {
       await ensureConnected();
 
-      if (companyId.isEmpty) return [];
+      if (companyId == null) return [];
 
       final jobs = await getCompanyJobs(companyId: companyId);
 
-      final jobIds = jobs
-          .map((job) => getMongoId(job['_id']))
-          .where((id) => id.isNotEmpty)
-          .toList();
+      // Collect all possible ID formats for these jobs
+      final allJobCandidates = [];
+      for (var job in jobs) {
+        allJobCandidates.addAll(_idCandidates(job['_id']));
+      }
 
-      if (jobIds.isEmpty) return [];
+      if (allJobCandidates.isEmpty) return [];
 
       final applicants = await _jobApplicationsCollection
           .find(
             where
-                .oneFrom('job_id', jobIds)
+                .oneFrom('job_id', allJobCandidates)
                 .sortBy('created_at', descending: true),
           )
           .toList();
@@ -728,16 +825,18 @@ class MongoService {
   }
 
   static Future<List<Map<String, dynamic>>> getApplicantsByJob({
-    required String jobId,
+    required dynamic jobId,
   }) async {
     try {
       await ensureConnected();
 
-      if (jobId.isEmpty) return [];
+      if (jobId == null) return [];
+
+      final candidates = _idCandidates(jobId);
 
       final applicants = await _jobApplicationsCollection
           .find(
-            where.eq('job_id', jobId).sortBy(
+            where.oneFrom('job_id', candidates).sortBy(
                   'created_at',
                   descending: true,
                 ),
@@ -752,14 +851,14 @@ class MongoService {
   }
 
   static Future<bool> updateApplicationStatus({
-    required String applicationId,
+    required dynamic applicationId,
     required String status,
     Map<String, dynamic>? extraData,
   }) async {
     try {
       await ensureConnected();
 
-      if (applicationId.isEmpty) return false;
+      if (applicationId == null) return false;
 
       final now = DateTime.now().toUtc();
 
@@ -788,9 +887,11 @@ class MongoService {
         updateData['rejected_status_updated_at'] = now;
       }
 
-      final appObjId = ObjectId.fromHexString(applicationId);
+      final candidates = _idCandidates(applicationId);
+      final query = where.oneFrom('_id', candidates);
+      
       await _jobApplicationsCollection.updateOne(
-        where.id(appObjId),
+        query,
         {
           r'$set': updateData,
         },
@@ -798,38 +899,51 @@ class MongoService {
 
       // Create Notification for Job Seeker
       try {
-        final application = await _jobApplicationsCollection.findOne(where.id(appObjId));
+        final application = await _jobApplicationsCollection.findOne(query);
         if (application != null) {
           final jobSeekerId = application['user_id'];
           final jobId = application['job_id'];
 
-          final job = await _jobVacanciesCollection.findOne(where.id(jobId is String ? ObjectId.fromHexString(jobId) : jobId));
+          // Handle Job lookup
+          Map<String, dynamic>? job;
+          for (final candidate in _idCandidates(jobId)) {
+            job = await _jobVacanciesCollection.findOne(where.id(candidate));
+            if (job != null) break;
+          }
           
           if (job != null) {
             final companyId = job['company_id'];
-            final company = await _companiesCollection.findOne(where.id(companyId is String ? ObjectId.fromHexString(companyId) : companyId));
+            
+            // Handle Company lookup
+            Map<String, dynamic>? company;
+            for (final candidate in _idCandidates(companyId)) {
+              company = await _companiesCollection.findOne(where.id(candidate));
+              if (company != null) break;
+            }
+            
             final companyUserId = company?['user_id'];
 
             String title = "";
             String message = "";
             String type = "";
 
-            if (status == 'ditinjau') {
+            final s = status.toLowerCase();
+            if (s == 'ditinjau' || s == 'diproses') {
               title = "Lamaran Ditinjau";
-              message = "Lamaran kamu sedang ditinjau oleh perusahaan.";
+              message = "Lamaran kamu untuk posisi ${job['title']} sedang ditinjau oleh ${company?['name'] ?? 'perusahaan'}.";
               type = "application_reviewed";
-            } else if (status == 'wawancara') {
+            } else if (s == 'wawancara') {
               title = "Jadwal Wawancara";
               final displayDate = extraData?['interview_display'] ?? extraData?['interview_date'] ?? '-';
-              message = "Kamu masuk tahap wawancara. Jadwal: $displayDate.";
+              message = "Kamu masuk tahap wawancara untuk ${job['title']}. Jadwal: $displayDate.";
               type = "interview_schedule";
-            } else if (status == 'diterima') {
+            } else if (s == 'diterima' || s == 'accepted' || s == 'lolos') {
               title = "Lamaran Diterima";
-              message = extraData?['accepted_message'] ?? "Selamat, kamu diterima. Lihat informasi selanjutnya.";
+              message = extraData?['accepted_message'] ?? "Selamat! Kamu diterima di ${company?['name'] ?? 'perusahaan'} untuk posisi ${job['title']}.";
               type = "application_accepted";
-            } else if (status == 'ditolak') {
+            } else if (s == 'ditolak' || s == 'rejected') {
               title = "Lamaran Ditolak";
-              message = "Lamaran kamu belum dapat dilanjutkan. Lihat alasan penolakan.";
+              message = "Terima kasih telah melamar. Saat ini lamaran kamu untuk ${job['title']} belum dapat kami lanjutkan.";
               type = "application_rejected";
             }
 
@@ -839,7 +953,7 @@ class MongoService {
                 receiverRole: 'job_seeker',
                 senderId: companyUserId,
                 senderRole: 'company',
-                applicationId: appObjId,
+                applicationId: application['_id'],
                 jobId: jobId,
                 title: title,
                 message: message,

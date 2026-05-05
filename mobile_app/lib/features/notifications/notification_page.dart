@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import '../../services/mongo_service.dart';
 import '../cv/cv_controller.dart';
 import '../cv/cv_detail_view.dart';
-// Jika ada detail lamaran untuk job seeker, import di sini. 
-// Untuk sementara kita arahkan ke CV Detail jika role company, 
-// atau biarkan hanya mark as read jika role job seeker.
+import '../company/company_applicant_detail_page.dart';
+import '../applications/applications_page.dart';
 
 class NotificationPage extends StatefulWidget {
   final Map<String, dynamic> currentUser;
@@ -60,35 +59,125 @@ class _NotificationPageState extends State<NotificationPage> {
   }
 
   Future<void> _handleNotificationClick(Map<String, dynamic> notification) async {
-    // 1. Mark as read in DB
-    final notificationId = MongoService.getMongoId(notification['_id']);
+    // 1. Mark as read in DB if not already read
     if (notification['is_read'] == false) {
+      final notificationId = MongoService.getMongoId(notification['_id']);
       await MongoService.markNotificationAsRead(notificationId: notificationId);
-      _loadNotifications(); // Refresh list to update UI
+      
+      // Update local state instead of full reload to prevent "disappearing" feel
+      if (mounted) {
+        setState(() {
+          final index = _notifications.indexWhere((n) => MongoService.getMongoId(n['_id']) == notificationId);
+          if (index != -1) {
+            _notifications[index]['is_read'] = true;
+          }
+        });
+      }
     }
 
     // 2. Navigation logic
     if (!mounted) return;
 
-    if (widget.role == 'company' && notification['type'] == 'new_application') {
-      // Go to applicant detail (needs applicant data)
-      // Since we only have application_id, we might need to fetch applicant details first.
-      _navigateToApplicantDetail(notification['application_id']);
-    } else {
-      // For job seekers, maybe go to application status page?
-      // For now, just showing snackbar that it's read.
+    final type = notification['type']?.toString() ?? '';
+    final role = widget.role;
+
+    if (role == 'company' && type == 'new_application') {
+      _navigateToApplicantDetail(notification['application_id'], notification['job_id']);
+    } else if (role == 'job_seeker' && (type.startsWith('application_') || type == 'interview_schedule')) {
+      // Navigate to Applications Page index (usually index 1)
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      // We assume the first page visited is HomePage/CompanyHomePage
+      // This is a simpler way to ensure the user lands on the right context
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Notifikasi telah dibaca')),
+        const SnackBar(content: Text('Membuka daftar lamaran Anda...')),
       );
     }
   }
 
-  Future<void> _navigateToApplicantDetail(dynamic applicationId) async {
-    // This is a simplified version. Ideally you fetch the application and user data.
-    // For now, showing a loader or just fetching enough to open the page.
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Membuka detail pelamar...')),
+  Future<void> _navigateToApplicationStatus(dynamic applicationId) async {
+    if (applicationId == null) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
     );
+
+    try {
+      final application = await MongoService.getApplicationById(applicationId);
+      
+      if (!mounted) return;
+      Navigator.pop(context);
+
+      if (application != null) {
+        // Here we could navigate to ApplicationDetailPage for Job Seeker 
+        // if you have that page. For now, showing a simple message or 
+        // we can implement the navigation if the page exists.
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Membuka status lamaran...')),
+        );
+      }
+    } catch (e) {
+      if (mounted) Navigator.pop(context);
+    }
+  }
+
+  Future<void> _navigateToApplicantDetail(dynamic applicationId, dynamic jobId) async {
+    if (applicationId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('ID Lamaran tidak ditemukan di notifikasi.')),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final application = await MongoService.getApplicationById(applicationId);
+      
+      // If jobId is null in notification, we can try to get it from the application
+      final effectiveJobId = jobId ?? application?['job_id'];
+      final job = await MongoService.getJobById(effectiveJobId);
+
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+
+      if (application != null && job != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => CompanyApplicantDetailPage(
+              applicant: application,
+              job: job,
+            ),
+          ),
+        );
+      } else {
+        String missing = "";
+        if (application == null) missing += "Data Pelamar ";
+        if (job == null) missing += "Data Lowongan ";
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal memuat: $missing tidak ditemukan.'),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+        // Refresh notifications list if data is missing, it might be outdated
+        _loadNotifications();
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Terjadi kesalahan: $e')),
+        );
+      }
+    }
   }
 
   @override
@@ -125,11 +214,16 @@ class _NotificationPageState extends State<NotificationPage> {
                       return Container(
                         margin: const EdgeInsets.only(bottom: 12),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: isRead ? Colors.white : const Color(0xFFF0F5FF), // Blue tint for unread
                           borderRadius: BorderRadius.circular(16),
+                          border: isRead 
+                              ? Border.all(color: Colors.grey.withOpacity(0.1)) 
+                              : Border.all(color: navy.withOpacity(0.1), width: 1.5),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
+                              color: isRead 
+                                  ? Colors.black.withOpacity(0.03) 
+                                  : navy.withOpacity(0.06),
                               blurRadius: 10,
                               offset: const Offset(0, 4),
                             ),
@@ -149,12 +243,12 @@ class _NotificationPageState extends State<NotificationPage> {
                                   Container(
                                     padding: const EdgeInsets.all(10),
                                     decoration: BoxDecoration(
-                                      color: lightBlue,
+                                      color: isRead ? lightBlue : navy,
                                       shape: BoxShape.circle,
                                     ),
-                                    child: const Icon(
-                                      Icons.notifications_outlined,
-                                      color: navy,
+                                    child: Icon(
+                                      isRead ? Icons.notifications_none_rounded : Icons.notifications_active_rounded,
+                                      color: isRead ? navy : Colors.white,
                                       size: 24,
                                     ),
                                   ),
@@ -167,40 +261,61 @@ class _NotificationPageState extends State<NotificationPage> {
                                         Row(
                                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                           children: [
-                                            Text(
-                                              notif['title'] ?? 'Notifikasi',
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 16,
-                                                color: navy,
+                                            Expanded(
+                                              child: Text(
+                                                notif['title'] ?? 'Notifikasi',
+                                                style: TextStyle(
+                                                  fontWeight: isRead ? FontWeight.w600 : FontWeight.w900,
+                                                  fontSize: 16,
+                                                  color: navy,
+                                                ),
                                               ),
                                             ),
                                             if (!isRead)
                                               Container(
-                                                width: 10,
-                                                height: 10,
+                                                width: 12,
+                                                height: 12,
                                                 decoration: const BoxDecoration(
-                                                  color: Colors.red,
+                                                  color: Colors.orange, // Use orange for attention
                                                   shape: BoxShape.circle,
+                                                  boxShadow: [
+                                                    BoxShadow(color: Colors.orangeAccent, blurRadius: 4)
+                                                  ]
                                                 ),
                                               ),
                                           ],
                                         ),
-                                        const SizedBox(height: 4),
+                                        const SizedBox(height: 6),
                                         Text(
                                           notif['message'] ?? '',
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             color: textGrey,
                                             fontSize: 14,
+                                            fontWeight: isRead ? FontWeight.normal : FontWeight.w600,
                                           ),
                                         ),
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          _formatDate(date),
-                                          style: TextStyle(
-                                            color: textGrey.withOpacity(0.6),
-                                            fontSize: 12,
-                                          ),
+                                        const SizedBox(height: 10),
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Text(
+                                              _formatDate(date),
+                                              style: TextStyle(
+                                                color: textGrey.withOpacity(0.5),
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                            if (!isRead)
+                                              const Text(
+                                                'Baru',
+                                                style: TextStyle(
+                                                  color: navy,
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                          ],
                                         ),
                                       ],
                                     ),

@@ -5,6 +5,7 @@ import 'company_job_page.dart';
 import 'company_global_applicants_page.dart';
 import 'company_create_job_page.dart';
 import 'company_profile_page.dart';
+import '../notifications/notification_page.dart';
 
 class CompanyHomePage extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -340,8 +341,10 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
 
     return Column(
       children: latestJobs.map((job) {
+        final jobId = MongoService.getMongoId(job['_id']);
         final jobApplicants = applicants.where((app) {
-          return app['job_id']?.toString() == MongoService.getMongoId(job['_id']);
+          final appJobId = MongoService.getMongoId(app['job_id']);
+          return appJobId == jobId;
         }).length;
 
         return Padding(
@@ -406,6 +409,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
   }
 
   Widget _buildHeader() {
+    final companyUserId = widget.userData['_id'];
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -431,10 +435,63 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
             ],
           ),
         ),
-        const Icon(
-          Icons.notifications,
-          size: 32,
-          color: CompanyHomePage.navy,
+        FutureBuilder<int>(
+          future: MongoService.getUnreadNotificationCount(
+            receiverId: companyUserId,
+            receiverRole: 'company',
+          ),
+          builder: (context, snapshot) {
+            final hasUnread = (snapshot.data ?? 0) > 0;
+            return Stack(
+              children: [
+                IconButton(
+                  onPressed: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => NotificationPage(
+                          currentUser: widget.userData,
+                          role: 'company',
+                        ),
+                      ),
+                    );
+                    setState(() {}); // Refresh dashboard to update indicator
+                  },
+                  icon: const Icon(
+                    Icons.notifications,
+                    size: 32,
+                    color: CompanyHomePage.navy,
+                  ),
+                ),
+                if (hasUnread)
+                  Positioned(
+                    right: 4,
+                    top: 4,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 20,
+                        minHeight: 20,
+                      ),
+                      child: Text(
+                        '${snapshot.data}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
         ),
       ],
     );

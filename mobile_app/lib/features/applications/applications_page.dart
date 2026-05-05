@@ -49,14 +49,19 @@ class _ApplicationsPageState extends State<ApplicationsPage> {
   }
 
   String _statusToFilter(String? status) {
-    switch ((status ?? '').toLowerCase()) {
+    final s = (status ?? '').toLowerCase();
+    switch (s) {
+      case 'ditinjau':
       case 'reviewed':
       case 'diproses':
       case 'processed':
         return 'Diproses';
+      case 'diterima':
+      case 'wawancara':
       case 'accepted':
       case 'selesai':
       case 'done':
+      case 'lolos':
         return 'Selesai';
       case 'rejected':
       case 'ditolak':
@@ -294,21 +299,7 @@ class _ApplicationCard extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        statusLabel,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
+                    _buildStatusBadge(statusLabel, theme),
                     Text(
                       dateText,
                       style: TextStyle(
@@ -322,6 +313,46 @@ class _ApplicationCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildStatusBadge(String status, ThemeData theme) {
+    Color bgColor;
+    Color textColor;
+
+    switch (status) {
+      case 'Selesai':
+        bgColor = const Color(0xFFD4F0DD); // Light Green
+        textColor = const Color(0xFF18A64A); // Success Green
+        break;
+      case 'Diproses':
+        bgColor = const Color(0xFFFFE4B8); // Light Orange
+        textColor = const Color(0xFFF59E0B); // Middle Orange
+        break;
+      case 'Ditolak':
+        bgColor = const Color(0xFFFFDADA); // Light Red
+        textColor = const Color(0xFFE53935); // Error Red
+        break;
+      case 'Dikirim':
+      default:
+        bgColor = theme.colorScheme.primary.withOpacity(0.1);
+        textColor = theme.colorScheme.primary;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        status,
+        style: TextStyle(
+          fontSize: 12,
+          color: textColor,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
