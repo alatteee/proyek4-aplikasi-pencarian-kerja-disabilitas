@@ -48,6 +48,107 @@ class MongoService {
 
   static DbCollection get _companiesCollection => db.collection('companies');
 
+  static DbCollection get _notificationsCollection => db.collection('notifications');
+
+  static Future<bool> createNotification({
+    required dynamic receiverId,
+    required String receiverRole,
+    required dynamic senderId,
+    required String senderRole,
+    required dynamic applicationId,
+    required dynamic jobId,
+    required String title,
+    required String message,
+    required String type,
+  }) async {
+    try {
+      await ensureConnected();
+
+      await _notificationsCollection.insertOne({
+        'receiver_id': receiverId,
+        'receiver_role': receiverRole,
+        'sender_id': senderId,
+        'sender_role': senderRole,
+        'application_id': applicationId,
+        'job_id': jobId,
+        'title': title,
+        'message': message,
+        'type': type,
+        'is_read': false,
+        'created_at': DateTime.now().toUtc(),
+      });
+
+      return true;
+    } catch (e) {
+      print('Gagal membuat notifikasi: $e');
+      return false;
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getNotifications({
+    required dynamic receiverId,
+    required String receiverRole,
+  }) async {
+    try {
+      await ensureConnected();
+
+      final notifications = await _notificationsCollection
+          .find(
+            where
+                .eq('receiver_id', receiverId)
+                .eq('receiver_role', receiverRole)
+                .sortBy('created_at', descending: true),
+          )
+          .toList();
+
+      return notifications.cast<Map<String, dynamic>>();
+    } catch (e) {
+      print('Gagal mengambil notifikasi: $e');
+      return [];
+    }
+  }
+
+  static Future<bool> markNotificationAsRead({
+    required String notificationId,
+  }) async {
+    try {
+      await ensureConnected();
+
+      if (notificationId.isEmpty) return false;
+
+      await _notificationsCollection.updateOne(
+        where.id(ObjectId.fromHexString(notificationId)),
+        modify.set('is_read', true).set('read_at', DateTime.now().toUtc()),
+      );
+
+      return true;
+    } catch (e) {
+      print('Gagal menandai notifikasi dibaca: $e');
+      return false;
+    }
+  }
+
+  static Future<int> getUnreadNotificationCount({
+    required dynamic receiverId,
+    required String receiverRole,
+  }) async {
+    try {
+      await ensureConnected();
+
+      final count = await _notificationsCollection.count(
+        where
+            .eq('receiver_id', receiverId)
+            .eq('receiver_role', receiverRole)
+            .eq('is_read', false),
+      );
+
+      return count;
+    } catch (e) {
+      print('Gagal menghitung notifikasi belum dibaca: $e');
+      return 0;
+    }
+  }
+
   static String getMongoId(dynamic value) {
     if (value == null) return '';
     if (value is ObjectId) return value.oid;
@@ -342,19 +443,48 @@ class MongoService {
     try {
       await ensureConnected();
 
-      final userId = applicationData['user_id']?.toString() ?? '';
-      final jobId = applicationData['job_id']?.toString() ?? '';
+      final userId = applicationData['user_id'];
+      final jobId = applicationData['job_id'];
 
-      if (userId.isEmpty || jobId.isEmpty) return false;
+      if (userId == null || jobId == null) return false;
 
       final alreadyApplied = await hasAppliedJob(
-        userId: userId,
-        jobId: jobId,
+        userId: userId.toString(),
+        jobId: jobId.toString(),
       );
 
       if (alreadyApplied) return false;
 
-      await _jobApplicationsCollection.insertOne(applicationData);
+      final result = await _jobApplicationsCollection.insertOne(applicationData);
+      final insertedId = result.id;
+
+      // Create Notification for Company
+      try {
+        final job = await _jobVacanciesCollection.findOne(where.id(jobId is String ? ObjectId.fromHexString(jobId) : jobId));
+        if (job != null) {
+          final companyId = job['company_id'];
+          final company = await _companiesCollection.findOne(where.id(companyId is String ? ObjectId.fromHexString(companyId) : companyId));
+          
+          if (company != null && company['user_id'] != null) {
+            final companyUserId = company['user_id'];
+            final message = "${applicationData['full_name']} melamar posisi ${job['title']}.";
+            
+            await createNotification(
+              receiverId: companyUserId,
+              receiverRole: 'company',
+              senderId: userId,
+              senderRole: 'job_seeker',
+              applicationId: insertedId,
+              jobId: jobId,
+              title: 'Pelamar Baru',
+              message: message,
+              type: 'new_application',
+            );
+          }
+        }
+      } catch (e) {
+        print('Gagal membuat notifikasi lamaran baru: $e');
+      }
 
       return true;
     } catch (e) {
@@ -658,12 +788,69 @@ class MongoService {
         updateData['rejected_status_updated_at'] = now;
       }
 
+      final appObjId = ObjectId.fromHexString(applicationId);
       await _jobApplicationsCollection.updateOne(
-        where.id(ObjectId.fromHexString(applicationId)),
+        where.id(appObjId),
         {
           r'$set': updateData,
         },
       );
+
+      // Create Notification for Job Seeker
+      try {
+        final application = await _jobApplicationsCollection.findOne(where.id(appObjId));
+        if (application != null) {
+          final jobSeekerId = application['user_id'];
+          final jobId = application['job_id'];
+
+          final job = await _jobVacanciesCollection.findOne(where.id(jobId is String ? ObjectId.fromHexString(jobId) : jobId));
+          
+          if (job != null) {
+            final companyId = job['company_id'];
+            final company = await _companiesCollection.findOne(where.id(companyId is String ? ObjectId.fromHexString(companyId) : companyId));
+            final companyUserId = company?['user_id'];
+
+            String title = "";
+            String message = "";
+            String type = "";
+
+            if (status == 'ditinjau') {
+              title = "Lamaran Ditinjau";
+              message = "Lamaran kamu sedang ditinjau oleh perusahaan.";
+              type = "application_reviewed";
+            } else if (status == 'wawancara') {
+              title = "Jadwal Wawancara";
+              final displayDate = extraData?['interview_display'] ?? extraData?['interview_date'] ?? '-';
+              message = "Kamu masuk tahap wawancara. Jadwal: $displayDate.";
+              type = "interview_schedule";
+            } else if (status == 'diterima') {
+              title = "Lamaran Diterima";
+              message = extraData?['accepted_message'] ?? "Selamat, kamu diterima. Lihat informasi selanjutnya.";
+              type = "application_accepted";
+            } else if (status == 'ditolak') {
+              title = "Lamaran Ditolak";
+              message = "Lamaran kamu belum dapat dilanjutkan. Lihat alasan penolakan.";
+              type = "application_rejected";
+            }
+
+            if (type.isNotEmpty) {
+              await createNotification(
+                receiverId: jobSeekerId,
+                receiverRole: 'job_seeker',
+                senderId: companyUserId,
+                senderRole: 'company',
+                applicationId: appObjId,
+                jobId: jobId,
+                title: title,
+                message: message,
+                type: type,
+              );
+            }
+          }
+        }
+      } catch (e) {
+        print('Gagal membuat notifikasi update status: $e');
+      }
 
       return true;
     } catch (e) {
