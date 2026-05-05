@@ -202,22 +202,9 @@ class _CompanyJobPageState extends State<CompanyJobPage> {
   }
 
   Widget _buildTopBar(BuildContext context) {
-    return Row(
+    return const Row(
       children: [
-        GestureDetector(
-          onTap: () {
-            if (Navigator.canPop(context)) {
-              Navigator.pop(context);
-            }
-          },
-          child: const Icon(
-            Icons.arrow_back,
-            size: 34,
-            color: navy,
-          ),
-        ),
-        const SizedBox(width: 18),
-        const Text(
+        Text(
           'Lowongan Saya',
           style: TextStyle(
             fontSize: 28,
