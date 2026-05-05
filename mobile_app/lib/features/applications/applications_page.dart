@@ -50,27 +50,23 @@ class _ApplicationsPageState extends State<ApplicationsPage> {
 
   String _statusToFilter(String? status) {
     final s = (status ?? '').toLowerCase();
-    switch (s) {
-      case 'ditinjau':
-      case 'reviewed':
-      case 'diproses':
-      case 'processed':
-        return 'Diproses';
-      case 'diterima':
-      case 'wawancara':
-      case 'accepted':
-      case 'selesai':
-      case 'done':
-      case 'lolos':
-        return 'Selesai';
-      case 'rejected':
-      case 'ditolak':
-        return 'Ditolak';
-      case 'pending':
-      case 'dikirim':
-      default:
-        return 'Dikirim';
+    
+    // Status 'ditinjau' (Reviewed) seharusnya masuk ke tab 'Diproses'
+    if (s == 'ditinjau' || s == 'reviewed' || s == 'diproses' || s == 'processed' || s == 'review') {
+      return 'Diproses';
     }
+    
+    // Status akhir
+    if (s == 'diterima' || s == 'accepted' || s == 'wawancara' || s == 'interview' || s == 'lolos' || s == 'selesai') {
+      return 'Selesai';
+    }
+    
+    if (s == 'rejected' || s == 'ditolak') {
+      return 'Ditolak';
+    }
+
+    // Default untuk lamaran yang baru dikirim
+    return 'Dikirim';
   }
 
   String _formatDate(dynamic value) {

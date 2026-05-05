@@ -435,64 +435,67 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
             ],
           ),
         ),
-        FutureBuilder<int>(
-          future: MongoService.getUnreadNotificationCount(
-            receiverId: companyUserId,
-            receiverRole: 'company',
-          ),
-          builder: (context, snapshot) {
-            final hasUnread = (snapshot.data ?? 0) > 0;
-            return Stack(
-              children: [
-                IconButton(
-                  onPressed: () async {
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => NotificationPage(
-                          currentUser: widget.userData,
-                          role: 'company',
+        if (companyUserId != null)
+          FutureBuilder<int>(
+            future: MongoService.getUnreadNotificationCount(
+              receiverId: companyUserId,
+              receiverRole: 'company',
+            ),
+            builder: (context, snapshot) {
+              final unreadCount = snapshot.data ?? 0;
+              final hasUnread = unreadCount > 0;
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  IconButton(
+                    onPressed: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => NotificationPage(
+                            currentUser: widget.userData,
+                            role: 'company',
+                          ),
                         ),
-                      ),
-                    );
-                    setState(() {}); // Refresh dashboard to update indicator
-                  },
-                  icon: const Icon(
-                    Icons.notifications,
-                    size: 32,
-                    color: CompanyHomePage.navy,
-                  ),
-                ),
-                if (hasUnread)
-                  Positioned(
-                    right: 4,
-                    top: 4,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                      constraints: const BoxConstraints(
-                        minWidth: 20,
-                        minHeight: 20,
-                      ),
-                      child: Text(
-                        '${snapshot.data}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
+                      );
+                      _loadDashboardData(); // Refresh unread count
+                    },
+                    icon: const Icon(
+                      Icons.notifications,
+                      color: CompanyHomePage.navy,
+                      size: 32,
                     ),
                   ),
-              ],
-            );
-          },
-        ),
+                  if (hasUnread)
+                    Positioned(
+                      right: 8,
+                      top: 12,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 18,
+                          minHeight: 18,
+                        ),
+                        child: Text(
+                          '$unreadCount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
       ],
     );
   }

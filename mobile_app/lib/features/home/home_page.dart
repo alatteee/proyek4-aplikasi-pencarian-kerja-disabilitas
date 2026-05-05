@@ -345,6 +345,8 @@ class _HomePageState extends State<HomePage> {
 
   AppBar _buildBerandaAppBar() {
     final theme = Theme.of(context);
+    final String userId = _currentUserId; // Cache local variable
+    
     return AppBar(
       backgroundColor: theme.appBarTheme.backgroundColor,
       elevation: 0,
@@ -360,63 +362,66 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
       actions: [
-        FutureBuilder<int>(
-          future: MongoService.getUnreadNotificationCount(
-            receiverId: _currentUserId,
-            receiverRole: 'job_seeker',
-          ),
-          builder: (context, snapshot) {
-            final hasUnread = (snapshot.data ?? 0) > 0;
-            return Stack(
-              children: [
-                IconButton(
-                  onPressed: () async {
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => NotificationPage(
-                          currentUser: widget.userData,
-                          role: 'job_seeker',
+        if (userId.isNotEmpty)
+          FutureBuilder<int>(
+            future: MongoService.getUnreadNotificationCount(
+              receiverId: userId,
+              receiverRole: 'job_seeker',
+            ),
+            builder: (context, snapshot) {
+              final hasUnread = (snapshot.data ?? 0) > 0;
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  IconButton(
+                    onPressed: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => NotificationPage(
+                            currentUser: widget.userData,
+                            role: 'job_seeker',
+                          ),
                         ),
-                      ),
-                    );
-                    setState(() {}); // Refresh to update unread indicator
-                  },
-                  icon: Icon(
-                    Icons.notifications,
-                    color: theme.colorScheme.primary,
-                    size: 30,
-                  ),
-                ),
-                if (hasUnread)
-                  Positioned(
-                    right: 8,
-                    top: 8,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                      ),
-                      constraints: const BoxConstraints(
-                        minWidth: 16,
-                        minHeight: 16,
-                      ),
-                      child: Text(
-                        '${snapshot.data}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
+                      );
+                      setState(() {}); // Refresh to update unread indicator
+                    },
+                    icon: Icon(
+                      Icons.notifications,
+                      color: theme.colorScheme.primary,
+                      size: 30,
                     ),
                   ),
-              ],
-            );
-          },
-        ),
+                  if (hasUnread)
+                    Positioned(
+                      right: 8,
+                      top: 12,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: theme.scaffoldBackgroundColor, width: 2),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 18,
+                          minHeight: 18,
+                        ),
+                        child: Text(
+                          '${snapshot.data}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
         const SizedBox(width: 8),
       ],
     );

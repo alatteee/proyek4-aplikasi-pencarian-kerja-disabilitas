@@ -7,6 +7,8 @@ class MongoService {
   static late DbCollection userDetails;
   static late DbCollection cvs;
 
+  static bool _isConnecting = false;
+
   static Future<void> connect() async {
     final uri = dotenv.env['MONGODB_URI'];
 
@@ -15,11 +17,22 @@ class MongoService {
     }
 
     if (_isDbOpen) return;
+    if (_isConnecting) return; // Prevent multiple simultaneous connection attempts
 
+    _isConnecting = true;
     try {
-      db = await Db.create(uri);
+      // Tambahkan parameter untuk stabilitas Atlas
+      String finalUri = uri;
+      if (!finalUri.contains('tls=')) {
+        final separator = finalUri.contains('?') ? '&' : '?';
+        finalUri += '${separator}tls=true&safeAtlas=true&keepAlive=true&connectTimeoutMS=10000&socketTimeoutMS=45000&maxIdleTimeMS=10000';
+      }
+
+      print('🔄 Connecting to MongoDB Atlas...');
+      db = await Db.create(finalUri);
       await db.open();
 
+      // Ensure all shared collection references are fresh
       users = db.collection('users');
       userDetails = db.collection('user_details');
       cvs = db.collection('cvs');
@@ -27,15 +40,18 @@ class MongoService {
       print('✅ MongoDB Connected');
     } catch (e) {
       print('❌ Gagal koneksi ke MongoDB: $e');
-      // Force reset jika gagal agar bisa retry
       try {
         await db.close();
       } catch (_) {}
+    } finally {
+      _isConnecting = false;
     }
   }
 
   static bool get _isDbOpen {
     try {
+      // ignore: unnecessary_null_comparison
+      if (db == null) return false;
       return db.state == State.open;
     } catch (_) {
       return false;
@@ -46,20 +62,49 @@ class MongoService {
     if (!_isDbOpen) {
       print('🔄 Membuka kembali koneksi MongoDB yang terputus...');
       await connect();
+      
+      // Wait a bit if we just started connecting
+      int retries = 0;
+      while (!_isDbOpen && retries < 5) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        retries++;
+      }
+    }
+    
+    // Always sync critical collections after ensuring connection
+    if (_isDbOpen) {
+      users = db.collection('users');
+      userDetails = db.collection('user_details');
+      cvs = db.collection('cvs');
+    } else {
+      throw Exception('MongoDart Error: No master connection (Reconnection failed)');
     }
   }
 
-  static DbCollection get _jobVacanciesCollection =>
-      db.collection('job_vacancies');
+  static DbCollection get _jobVacanciesCollection {
+    if (!_isDbOpen) throw Exception('Database not connected');
+    return db.collection('job_vacancies');
+  }
 
-  static DbCollection get _savedJobsCollection => db.collection('saved_jobs');
+  static DbCollection get _savedJobsCollection {
+    if (!_isDbOpen) throw Exception('Database not connected');
+    return db.collection('saved_jobs');
+  }
 
-  static DbCollection get _jobApplicationsCollection =>
-      db.collection('job_applications');
+  static DbCollection get _jobApplicationsCollection {
+    if (!_isDbOpen) throw Exception('Database not connected');
+    return db.collection('job_applications');
+  }
 
-  static DbCollection get _companiesCollection => db.collection('companies');
+  static DbCollection get _companiesCollection {
+    if (!_isDbOpen) throw Exception('Database not connected');
+    return db.collection('companies');
+  }
 
-  static DbCollection get _notificationsCollection => db.collection('notifications');
+  static DbCollection get _notificationsCollection {
+    if (!_isDbOpen) throw Exception('Database not connected');
+    return db.collection('notifications');
+  }
 
   static Future<bool> createNotification({
     required dynamic receiverId,

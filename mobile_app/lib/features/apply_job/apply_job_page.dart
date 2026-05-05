@@ -188,6 +188,24 @@ class _ApplyJobPageState extends State<ApplyJobPage> {
     });
 
     if (success) {
+      // Trigger notification for company
+      final jobData = widget.job;
+      final companyId = jobData['company_id'];
+      
+      if (companyId != null) {
+        await MongoService.createNotification(
+          receiverId: companyId,
+          receiverRole: 'company',
+          senderId: _userId,
+          senderRole: 'job_seeker',
+          applicationId: '', // Will be updated on refresh if needed, or leave empty
+          jobId: _jobId,
+          title: 'Pelamar Baru',
+          message: '$_fullName telah melamar untuk posisi $_jobTitle.',
+          type: 'new_applicant',
+        );
+      }
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
