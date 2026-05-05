@@ -4,6 +4,7 @@ import '../../services/mongo_service.dart';
 import 'company_job_page.dart';
 import 'company_global_applicants_page.dart';
 import 'company_create_job_page.dart';
+import 'company_profile_page.dart';
 
 class CompanyHomePage extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -170,9 +171,9 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
           jobs: companyJobs,
         );
       case 3:
-        return _buildPlaceholderPage(
-          title: 'Profil Perusahaan',
-          icon: Icons.person_outline,
+        return CompanyProfilePage(
+          companyName: company?['company_name']?.toString() ?? _getCompanyName(),
+          userData: widget.userData,
         );
       default:
         return _buildDashboardContent();
