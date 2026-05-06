@@ -803,6 +803,7 @@ class MongoService {
             .set('email', data['email'])
             .set('phone', data['phone'])
             .set('field', data['field'] ?? '')
+            .set('profile_photo', data['profile_photo'])
             .set('updated_at', DateTime.now().toUtc()),
       );
 
@@ -889,6 +890,7 @@ class MongoService {
             .set('qualification', data['qualification'])
             .set('facilities', data['facilities'])
             .set('is_disability_friendly', data['is_disability_friendly'])
+            .set('job_photo', data['job_photo'])
             .set('updated_at', DateTime.now().toUtc()),
       );
 

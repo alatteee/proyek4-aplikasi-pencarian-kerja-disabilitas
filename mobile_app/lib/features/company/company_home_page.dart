@@ -6,6 +6,7 @@ import 'company_global_applicants_page.dart';
 import 'company_create_job_page.dart';
 import 'company_profile_page.dart';
 import '../notifications/notification_page.dart';
+import 'dart:convert';
 
 class CompanyHomePage extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -396,6 +397,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
             title: job['title']?.toString() ?? '-',
             date: _formatDate(job['created_at']),
             applicantCount: jobApplicants,
+            jobPhoto: job['job_photo']?.toString(),
           ),
         );
       }).toList(),
@@ -678,6 +680,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
     required String title,
     required String date,
     required int applicantCount,
+    String? jobPhoto,
   }) {
     return Container(
       width: double.infinity,
@@ -692,12 +695,20 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
             decoration: BoxDecoration(
               color: Colors.grey.shade200,
               borderRadius: BorderRadius.circular(14),
+              image: jobPhoto != null
+                  ? DecorationImage(
+                      image: MemoryImage(base64Decode(jobPhoto)),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
             ),
-            child: const Icon(
-              Icons.headset_mic,
-              size: 42,
-              color: CompanyHomePage.navy,
-            ),
+            child: jobPhoto == null
+                ? const Icon(
+                    Icons.business_center_rounded,
+                    size: 42,
+                    color: CompanyHomePage.navy,
+                  )
+                : null,
           ),
           const SizedBox(width: 18),
           Expanded(
