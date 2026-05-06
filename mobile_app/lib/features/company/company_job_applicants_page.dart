@@ -379,6 +379,8 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
   }
 
   Widget _buildJobSummary(String jobTitle, String companyName) {
+    final String? jobPhoto = widget.job['job_photo'];
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
@@ -391,12 +393,20 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
             decoration: BoxDecoration(
               color: lightBlue,
               borderRadius: BorderRadius.circular(14),
+              image: jobPhoto != null
+                  ? DecorationImage(
+                      image: MemoryImage(base64Decode(jobPhoto)),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
             ),
-            child: const Icon(
-              Icons.business_center_rounded,
-              color: navy,
-              size: 30,
-            ),
+            child: jobPhoto == null
+                ? const Icon(
+                    Icons.business_center_rounded,
+                    color: navy,
+                    size: 30,
+                  )
+                : null,
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -566,8 +576,8 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
         }
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+        margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+        padding: const EdgeInsets.all(18),
         decoration: _cardDecoration(),
         child: Row(
           children: [
@@ -692,12 +702,12 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
   BoxDecoration _cardDecoration() {
     return BoxDecoration(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(20),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.14),
-          blurRadius: 11,
-          offset: const Offset(0, 5),
+          color: Colors.black.withOpacity(0.06),
+          blurRadius: 12,
+          offset: const Offset(0, 4),
         ),
       ],
     );

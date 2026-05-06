@@ -704,6 +704,16 @@ class MongoService {
           )
           .toList();
 
+      // Secara otomatis melengkapi job_photo jika belum ada di data lamaran
+      for (var app in applications) {
+        if (app['job_photo'] == null && app['job_id'] != null) {
+          final job = await getJobById(app['job_id']);
+          if (job != null && job['job_photo'] != null) {
+            app['job_photo'] = job['job_photo'];
+          }
+        }
+      }
+
       return applications.cast<Map<String, dynamic>>();
     } catch (e) {
       print('Gagal mengambil data lamaran: $e');
