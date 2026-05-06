@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../services/mongo_service.dart';
 import 'company_job_detail_page.dart';
+import 'dart:convert';
 
 class CompanyJobPage extends StatefulWidget {
   final String companyId;
@@ -318,6 +319,7 @@ class _CompanyJobPageState extends State<CompanyJobPage> {
     final location = job['location']?.toString() ?? '-';
     final jobType = job['job_type']?.toString() ?? '-';
     final status = job['status']?.toString() ?? '-';
+    final String? jobPhoto = job['job_photo'];
 
     return GestureDetector(
       onTap: () async {
@@ -362,12 +364,20 @@ class _CompanyJobPageState extends State<CompanyJobPage> {
                   decoration: BoxDecoration(
                     color: lightGrey,
                     borderRadius: BorderRadius.circular(12),
+                    image: jobPhoto != null
+                        ? DecorationImage(
+                            image: MemoryImage(base64Decode(jobPhoto)),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
                   ),
-                  child: Icon(
-                    _getJobIcon(title),
-                    size: 38,
-                    color: navy,
-                  ),
+                  child: jobPhoto == null
+                      ? Icon(
+                          _getJobIcon(title),
+                          size: 38,
+                          color: navy,
+                        )
+                      : null,
                 ),
                 const SizedBox(width: 14),
                 Expanded(

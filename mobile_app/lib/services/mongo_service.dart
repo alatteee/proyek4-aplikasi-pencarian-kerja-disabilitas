@@ -888,6 +888,7 @@ class MongoService {
             .set('qualification', data['qualification'])
             .set('facilities', data['facilities'])
             .set('is_disability_friendly', data['is_disability_friendly'])
+            .set('job_photo', data['job_photo'])
             .set('updated_at', DateTime.now().toUtc()),
       );
 
