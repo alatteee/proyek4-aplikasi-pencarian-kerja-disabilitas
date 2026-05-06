@@ -8,6 +8,7 @@ import '../profile/accessibility_settings_view.dart';
 
 import '../notifications/notification_page.dart';
 import '../cv/cv_view.dart';
+import 'dart:convert';
 
 class HomePage extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -628,6 +629,7 @@ class _HomePageState extends State<HomePage> {
                       location: jobMap['location'] ?? '-',
                       type: jobMap['job_type'] ?? '-',
                       desc: jobMap['description'] ?? '-',
+                      jobPhoto: jobMap['job_photo']?.toString(),
                       isSaved: savedJobIds.contains(_jobIdOf(jobMap)),
                       onSave: () => toggleSaveJob(jobMap),
                       onDetail: () {
@@ -701,6 +703,7 @@ class _JobCard extends StatelessWidget {
   final String location;
   final String type;
   final String desc;
+  final String? jobPhoto;
   final bool isSaved;
   final VoidCallback? onDetail;
   final VoidCallback? onSave;
@@ -711,6 +714,7 @@ class _JobCard extends StatelessWidget {
     required this.location,
     required this.type,
     required this.desc,
+    this.jobPhoto,
     required this.isSaved,
     this.onDetail,
     this.onSave,
@@ -736,21 +740,48 @@ class _JobCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.yellow : Colors.black87,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            company,
-            style: TextStyle(
-              color: isDark ? Colors.yellow.withOpacity(0.7) : AppColors.textGray,
-              fontSize: 14,
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (jobPhoto != null)
+                Container(
+                  width: 54,
+                  height: 54,
+                  margin: const EdgeInsets.only(right: 12),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    image: DecorationImage(
+                      image: MemoryImage(base64Decode(jobPhoto!)),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.yellow : Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      company,
+                      style: TextStyle(
+                        color: isDark
+                            ? Colors.yellow.withOpacity(0.7)
+                            : AppColors.textGray,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           Row(
