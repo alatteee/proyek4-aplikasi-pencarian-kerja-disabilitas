@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../services/mongo_service.dart';
@@ -53,14 +56,34 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
     setState(() => isLoading = true);
 
     final jobId = MongoService.getMongoId(widget.job['_id']);
-    final data = await MongoService.getApplicantsByJob(jobId: jobId);
+    final rawApplicants = await MongoService.getApplicantsByJob(jobId: jobId);
+    final enrichedApplicants =
+        await MongoService.enrichApplicantsWithUserDetails(rawApplicants);
 
     if (!mounted) return;
 
     setState(() {
-      applicants = data;
+      applicants = enrichedApplicants;
       isLoading = false;
     });
+  }
+
+  String _cleanBase64Image(String value) {
+    var cleaned = value.trim();
+
+    if (cleaned.contains(',')) {
+      cleaned = cleaned.split(',').last;
+    }
+
+    cleaned = cleaned.replaceAll(RegExp(r'\s+'), '');
+
+    return cleaned;
+  }
+
+  bool _isLikelyLocalFilePath(String value) {
+    return value.startsWith('/data/') ||
+        value.startsWith('/storage/') ||
+        value.startsWith('/sdcard/');
   }
 
   String _normalizeStatus(String status) {
@@ -190,6 +213,91 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
     return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
   }
 
+  Widget _buildApplicantAvatar({
+    required String name,
+    required String profilePhoto,
+    double radius = 27,
+  }) {
+    Widget fallbackAvatar() {
+      return CircleAvatar(
+        radius: radius,
+        backgroundColor: lightBlue,
+        child: Text(
+          _getInitials(name),
+          style: TextStyle(
+            color: navy,
+            fontSize: radius >= 34 ? 22 : 15,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      );
+    }
+
+    final photo = profilePhoto.trim();
+
+    if (photo.isEmpty) {
+      return fallbackAvatar();
+    }
+
+    try {
+      if (photo.startsWith('http')) {
+        return ClipOval(
+          child: Image.network(
+            photo,
+            width: radius * 2,
+            height: radius * 2,
+            fit: BoxFit.cover,
+            errorBuilder: (_, error, ___) {
+              debugPrint('DEBUG IMAGE NETWORK ERROR $name: $error');
+              return fallbackAvatar();
+            },
+          ),
+        );
+      }
+
+      if (_isLikelyLocalFilePath(photo)) {
+        return ClipOval(
+          child: Image.file(
+            File(photo),
+            width: radius * 2,
+            height: radius * 2,
+            fit: BoxFit.cover,
+            errorBuilder: (_, error, ___) {
+              debugPrint('DEBUG IMAGE FILE ERROR $name: $error');
+              return fallbackAvatar();
+            },
+          ),
+        );
+      }
+
+      final cleanedPhoto = _cleanBase64Image(photo);
+      final bytes = base64Decode(cleanedPhoto);
+
+      debugPrint(
+        'DEBUG BASE64 OK $name: '
+        'bytesLength=${bytes.length}, '
+        'firstBytes=${bytes.length >= 4 ? bytes.sublist(0, 4).toString() : bytes.toString()}',
+      );
+
+      return ClipOval(
+        child: Image.memory(
+          bytes,
+          width: radius * 2,
+          height: radius * 2,
+          fit: BoxFit.cover,
+          gaplessPlayback: true,
+          errorBuilder: (_, error, ___) {
+            debugPrint('DEBUG IMAGE MEMORY ERROR $name: $error');
+            return fallbackAvatar();
+          },
+        ),
+      );
+    } catch (e) {
+      debugPrint('Gagal render foto pelamar $name: $e');
+      return fallbackAvatar();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final jobTitle = widget.job['title']?.toString() ?? '-';
@@ -207,21 +315,13 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildHeader(context),
-
                 const SizedBox(height: 22),
-
                 _buildJobSummary(jobTitle, companyName),
-
                 const SizedBox(height: 20),
-
                 _buildSearchBox(),
-
                 const SizedBox(height: 18),
-
                 _buildFilterButtons(),
-
                 const SizedBox(height: 22),
-
                 Expanded(
                   child: isLoading
                       ? const Center(
@@ -261,9 +361,7 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
             color: navy,
           ),
         ),
-
         const SizedBox(width: 18),
-
         const Expanded(
           child: Text(
             'Pelamar Lowongan',
@@ -300,9 +398,7 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
               size: 30,
             ),
           ),
-
           const SizedBox(width: 14),
-
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -329,7 +425,6 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
               ],
             ),
           ),
-
           Text(
             '${applicants.length} pelamar',
             style: const TextStyle(
@@ -443,6 +538,14 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
     final email = applicant['email']?.toString() ?? '-';
     final phone = applicant['phone']?.toString() ?? '-';
     final status = applicant['status']?.toString() ?? 'dikirim';
+    final profilePhoto = applicant['profile_photo']?.toString() ?? '';
+
+    debugPrint(
+      'DEBUG FOTO $name: '
+      'isEmpty=${profilePhoto.isEmpty}, '
+      'length=${profilePhoto.length}, '
+      'prefix=${profilePhoto.length > 40 ? profilePhoto.substring(0, 40) : profilePhoto}',
+    );
 
     return GestureDetector(
       onTap: () async {
@@ -468,21 +571,12 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
         decoration: _cardDecoration(),
         child: Row(
           children: [
-            CircleAvatar(
+            _buildApplicantAvatar(
+              name: name,
+              profilePhoto: profilePhoto,
               radius: 27,
-              backgroundColor: lightBlue,
-              child: Text(
-                _getInitials(name),
-                style: const TextStyle(
-                  color: navy,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
             ),
-
             const SizedBox(width: 14),
-
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -497,9 +591,7 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
                       color: navy,
                     ),
                   ),
-
                   const SizedBox(height: 4),
-
                   Text(
                     email,
                     maxLines: 1,
@@ -510,9 +602,7 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-
                   const SizedBox(height: 4),
-
                   Text(
                     phone,
                     maxLines: 1,
@@ -523,9 +613,7 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-
                   const SizedBox(height: 8),
-
                   Text(
                     'Melamar ${_formatDate(applicant['created_at'])}',
                     style: const TextStyle(
@@ -537,9 +625,7 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
                 ],
               ),
             ),
-
             const SizedBox(width: 8),
-
             _buildStatusBadge(status),
           ],
         ),
