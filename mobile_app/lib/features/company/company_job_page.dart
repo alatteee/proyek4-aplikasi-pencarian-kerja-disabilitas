@@ -340,16 +340,16 @@ class _CompanyJobPageState extends State<CompanyJobPage> {
         }
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 18),
-        padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+        margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(26),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.18),
-              blurRadius: 13,
-              offset: const Offset(0, 6),
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
         ),

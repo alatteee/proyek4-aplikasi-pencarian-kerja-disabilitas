@@ -480,13 +480,6 @@ class _CompanyGlobalApplicantsPageState
     final date = _formatDate(applicant['created_at']);
     final profilePhoto = applicant['profile_photo']?.toString() ?? '';
 
-    debugPrint(
-      'DEBUG FOTO $name: '
-      'isEmpty=${profilePhoto.isEmpty}, '
-      'length=${profilePhoto.length}, '
-      'prefix=${profilePhoto.length > 40 ? profilePhoto.substring(0, 40) : profilePhoto}',
-    );
-
     return GestureDetector(
       onTap: () async {
         final result = await Navigator.push(
@@ -506,21 +499,22 @@ class _CompanyGlobalApplicantsPageState
         }
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 18),
-        padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+        margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.14),
-              blurRadius: 14,
-              offset: const Offset(0, 7),
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
-        child: Row(
-          children: [
+        child: IntrinsicHeight(
+          child: Row(
+            children: [
             _buildApplicantAvatar(
               name: name,
               profilePhoto: profilePhoto,
@@ -590,8 +584,9 @@ class _CompanyGlobalApplicantsPageState
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildEmptyState() {
     return ListView(
