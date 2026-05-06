@@ -32,7 +32,9 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
   Map<String, dynamic>? company;
   List<Map<String, dynamic>> companyJobs = [];
   List<Map<String, dynamic>> applicants = [];
+
   bool isLoading = true;
+  bool _isOpeningNotificationPage = false;
 
   int _selectedIndex = 0;
 
@@ -48,42 +50,47 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
   }
 
   Future<void> _loadDashboardData() async {
-    setState(() {
-      isLoading = true;
-    });
+    if (mounted) {
+      setState(() {
+        isLoading = true;
+      });
+    }
 
-    // Get userId from userData
     final userId = widget.userData['_id'];
-    
+
     if (userId == null) {
       if (!mounted) return;
+
       setState(() {
         company = null;
         companyJobs = [];
         applicants = [];
         isLoading = false;
       });
+
       return;
     }
 
-    // Fetch company using user_id
     final companyData = await MongoService.getCompanyByUserId(userId);
 
     if (companyData == null) {
       if (!mounted) return;
+
       setState(() {
         company = null;
         companyJobs = [];
         applicants = [];
         isLoading = false;
       });
+
       return;
     }
 
     final companyId = MongoService.getMongoId(companyData['_id']);
     final jobsData = await MongoService.getCompanyJobs(companyId: companyId);
-    final applicantsData =
-        await MongoService.getCompanyApplicants(companyId: companyId);
+    final applicantsData = await MongoService.getCompanyApplicants(
+      companyId: companyId,
+    );
 
     if (!mounted) return;
 
@@ -93,6 +100,34 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
       applicants = applicantsData;
       isLoading = false;
     });
+  }
+
+  Future<void> _openNotificationPage() async {
+    if (_isOpeningNotificationPage) return;
+
+    setState(() {
+      _isOpeningNotificationPage = true;
+    });
+
+    try {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => NotificationPage(
+            currentUser: widget.userData,
+            role: 'company',
+          ),
+        ),
+      );
+    } finally {
+      if (!mounted) return;
+
+      setState(() {
+        _isOpeningNotificationPage = false;
+      });
+
+      await _loadDashboardData();
+    }
   }
 
   String _getCompanyName() {
@@ -106,6 +141,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
     if (value == null) return '-';
 
     DateTime? date;
+
     if (value is DateTime) {
       date = value;
     } else {
@@ -133,8 +169,11 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
   }
 
   String _getInitials(String name) {
-    final parts = name.trim().split(' ');
-    if (parts.isEmpty || name.trim().isEmpty) return '?';
+    final cleanName = name.trim();
+
+    if (cleanName.isEmpty) return '?';
+
+    final parts = cleanName.split(' ');
 
     if (parts.length == 1) {
       return parts.first.substring(0, 1).toUpperCase();
@@ -169,6 +208,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
     switch (_selectedIndex) {
       case 0:
         return _buildDashboardContent();
+
       case 1:
         if (company == null) {
           return _buildPlaceholderPage(
@@ -180,16 +220,19 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
         return CompanyJobPage(
           companyId: MongoService.getMongoId(company!['_id']),
         );
+
       case 2:
         return CompanyGlobalApplicantsPage(
           applicants: applicants,
           jobs: companyJobs,
         );
+
       case 3:
         return CompanyProfilePage(
           companyName: company?['company_name']?.toString() ?? _getCompanyName(),
           userData: widget.userData,
         );
+
       default:
         return _buildDashboardContent();
     }
@@ -371,6 +414,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
     return Column(
       children: latestApplicants.map((applicant) {
         final name = applicant['full_name']?.toString() ?? 'Pelamar';
+
         return _buildApplicantCard(
           initials: _getInitials(name),
           name: name,
@@ -387,7 +431,9 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: _cardDecoration(),
-      child: const Center(child: CircularProgressIndicator()),
+      child: const Center(
+        child: CircularProgressIndicator(),
+      ),
     );
   }
 
@@ -410,6 +456,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
 
   Widget _buildHeader() {
     final companyUserId = widget.userData['_id'];
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -444,55 +491,58 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
             builder: (context, snapshot) {
               final unreadCount = snapshot.data ?? 0;
               final hasUnread = unreadCount > 0;
-              return Stack(
-                alignment: Alignment.center,
-                children: [
-                  IconButton(
-                    onPressed: () async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => NotificationPage(
-                            currentUser: widget.userData,
-                            role: 'company',
-                          ),
-                        ),
-                      );
-                      _loadDashboardData(); // Refresh unread count
-                    },
-                    icon: const Icon(
-                      Icons.notifications,
-                      color: CompanyHomePage.navy,
-                      size: 32,
-                    ),
-                  ),
-                  if (hasUnread)
-                    Positioned(
-                      right: 8,
-                      top: 12,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 18,
-                          minHeight: 18,
-                        ),
-                        child: Text(
-                          '$unreadCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
+
+              return Padding(
+                padding: const EdgeInsets.only(right: 4),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  alignment: Alignment.center,
+                  children: [
+                    IconButton(
+                      tooltip: 'Notifikasi',
+                      onPressed: _isOpeningNotificationPage
+                          ? null
+                          : _openNotificationPage,
+                      icon: const Icon(
+                        Icons.notifications,
+                        color: CompanyHomePage.navy,
+                        size: 32,
                       ),
                     ),
-                ],
+                    if (hasUnread)
+                      Positioned(
+                        right: 6,
+                        top: 10,
+                        child: IgnorePointer(
+                          ignoring: true,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white,
+                                width: 2,
+                              ),
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 18,
+                              minHeight: 18,
+                            ),
+                            child: Text(
+                              unreadCount > 99 ? '99+' : '$unreadCount',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               );
             },
           ),
@@ -505,7 +555,9 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
       onTap: () async {
         if (company == null) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Data perusahaan belum tersedia')),
+            const SnackBar(
+              content: Text('Data perusahaan belum tersedia'),
+            ),
           );
           return;
         }
@@ -515,10 +567,13 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
           MaterialPageRoute(
             builder: (_) => CompanyCreateJobPage(
               companyId: MongoService.getMongoId(company!['_id']),
-              companyName: company!['company_name']?.toString() ?? _getCompanyName(),
+              companyName:
+                  company!['company_name']?.toString() ?? _getCompanyName(),
             ),
           ),
         );
+
+        if (!mounted) return;
 
         if (result == 'jobs') {
           setState(() => _selectedIndex = 1);
@@ -554,10 +609,10 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
               ),
             ),
             const SizedBox(width: 18),
-            Expanded(
+            const Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
+                children: [
                   Text(
                     'Buat Lowongan Baru',
                     maxLines: 1,
@@ -790,13 +845,27 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
   String _statusLabel(String status) {
     switch (status.toLowerCase()) {
       case 'pending':
-        return 'Diproses';
+      case 'dikirim':
+        return 'Dikirim';
+
       case 'reviewed':
+      case 'ditinjau':
+      case 'diproses':
         return 'Ditinjau';
+
+      case 'interview':
+      case 'wawancara':
+        return 'Wawancara';
+
       case 'accepted':
+      case 'diterima':
+      case 'lolos':
         return 'Diterima';
+
       case 'rejected':
+      case 'ditolak':
         return 'Ditolak';
+
       default:
         return status;
     }
@@ -833,14 +902,20 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
             icon: Icons.home,
             label: 'Beranda',
             active: _selectedIndex == 0,
-            onTap: () => setState(() => _selectedIndex = 0),
+            onTap: () {
+              if (_selectedIndex == 0) return;
+              setState(() => _selectedIndex = 0);
+            },
           ),
           _BottomItem(
             icon: Icons.business_center_outlined,
             label: 'Lowongan',
             active: _selectedIndex == 1,
             onTap: () async {
-              setState(() => _selectedIndex = 1);
+              if (_selectedIndex != 1) {
+                setState(() => _selectedIndex = 1);
+              }
+
               await _loadDashboardData();
             },
           ),
@@ -849,7 +924,10 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
             label: 'Pelamar',
             active: _selectedIndex == 2,
             onTap: () async {
-              setState(() => _selectedIndex = 2);
+              if (_selectedIndex != 2) {
+                setState(() => _selectedIndex = 2);
+              }
+
               await _loadDashboardData();
             },
           ),
@@ -857,7 +935,10 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
             icon: Icons.person_outline,
             label: 'Profil',
             active: _selectedIndex == 3,
-            onTap: () => setState(() => _selectedIndex = 3),
+            onTap: () {
+              if (_selectedIndex == 3) return;
+              setState(() => _selectedIndex = 3);
+            },
           ),
         ],
       ),
