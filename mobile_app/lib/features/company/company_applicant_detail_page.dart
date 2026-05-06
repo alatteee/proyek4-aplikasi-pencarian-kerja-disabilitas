@@ -280,52 +280,12 @@ class _CompanyApplicantDetailPageState
     Map<String, dynamic>? extraData,
   }) async {
     final applicationId = MongoService.getMongoId(widget.applicant['_id']);
-    final userId = widget.applicant['user_id'];
-    final jobTitle = widget.applicant['job_title'] ?? 'Posisi Terkait';
-    final companyName = widget.applicant['company_name'] ?? 'Perusahaan Terkait';
 
     final success = await MongoService.updateApplicationStatus(
       applicationId: applicationId,
       status: status,
       extraData: extraData,
     );
-
-    if (success && userId != null) {
-      // Trigger notification to job seeker
-      String title = 'Pembaruan Lamaran';
-      String message = 'Lamaran Anda di $companyName untuk posisi $jobTitle sedang diperbarui.';
-      String type = 'application_status';
-
-      final normalized = _normalizeStatus(status);
-      if (normalized == 'ditinjau') {
-        title = 'Lamaran Ditinjau';
-        message = 'Lamaran Anda untuk posisi $jobTitle sedang ditinjau oleh $companyName.';
-      } else if (normalized == 'wawancara') {
-        title = 'Panggilan Wawancara';
-        message = 'Selamat! Anda dipanggil wawancara untuk posisi $jobTitle di $companyName.';
-        type = 'interview_call';
-      } else if (normalized == 'diterima') {
-        title = 'Lamaran Diterima';
-        message = 'Selamat! Anda diterima bekerja untuk posisi $jobTitle di $companyName.';
-        type = 'application_accepted';
-      } else if (normalized == 'ditolak') {
-        title = 'Pembaruan Lamaran';
-        message = 'Terima kasih telah melamar. Mohon maaf, lamaran Anda belum dapat dilanjutkan oleh $companyName.';
-        type = 'application_rejected';
-      }
-
-      await MongoService.createNotification(
-        receiverId: userId,
-        receiverRole: 'job_seeker',
-        senderId: widget.applicant['company_id'] ?? '',
-        senderRole: 'company',
-        applicationId: applicationId,
-        jobId: widget.applicant['job_id'] ?? '',
-        title: title,
-        message: message,
-        type: type,
-      );
-    }
 
     if (!context.mounted) return;
 
