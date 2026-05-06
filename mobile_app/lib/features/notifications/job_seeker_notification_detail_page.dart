@@ -240,6 +240,48 @@ class _JobSeekerNotificationDetailPageState
     return Icons.notifications_rounded;
   }
 
+  String _getInterviewDisplayFromNotification() {
+    final directValue = _text(
+      widget.notification['interview_display'] ??
+          widget.notification['interview_date_display'],
+      fallback: '',
+    );
+
+    if (directValue.isNotEmpty) return directValue;
+
+    final message = _text(
+      widget.notification['message'],
+      fallback: '',
+    );
+
+    final marker = 'Jadwal:';
+    final markerIndex = message.indexOf(marker);
+
+    if (markerIndex != -1) {
+      final extracted = message.substring(markerIndex + marker.length).trim();
+
+      if (extracted.isNotEmpty) {
+        return extracted.replaceAll(RegExp(r'\.$'), '');
+      }
+    }
+
+    return _text(
+      application?['interview_display'] ??
+          _formatDate(application?['interview_date']),
+    );
+  }
+
+  String _getInterviewNoteFromNotification() {
+    final directValue = _text(
+      widget.notification['interview_note'],
+      fallback: '',
+    );
+
+    if (directValue.isNotEmpty) return directValue;
+
+    return _text(application?['interview_note']);
+  }
+
   @override
   Widget build(BuildContext context) {
     final title = _text(
@@ -460,15 +502,12 @@ class _JobSeekerNotificationDetailPageState
           _infoRow(
             icon: Icons.calendar_month_rounded,
             label: 'Jadwal',
-            value: _text(
-              application?['interview_display'] ??
-                  _formatDate(application?['interview_date']),
-            ),
+            value: _getInterviewDisplayFromNotification(),
           ),
           _infoRow(
             icon: Icons.notes_rounded,
             label: 'Catatan',
-            value: _text(application?['interview_note']),
+            value: _getInterviewNoteFromNotification(),
           ),
         ],
       );

@@ -115,6 +115,7 @@ class MongoService {
     required String title,
     required String message,
     required String type,
+    Map<String, dynamic>? extraData,
   }) async {
     try {
       await ensureConnected();
@@ -136,6 +137,7 @@ class MongoService {
         'type': type,
         'is_read': false,
         'created_at': DateTime.now().toUtc(),
+        ...?extraData,
       };
 
       print('DEBUG: Inserting Notification: $notificationData');
@@ -996,6 +998,7 @@ class MongoService {
 
       try {
         final application = await _jobApplicationsCollection.findOne(query);
+
         if (application != null) {
           final jobSeekerId = application['user_id'];
           final jobId = application['job_id'];
@@ -1018,23 +1021,31 @@ class MongoService {
             }
 
             final companyUserId = company?['user_id'];
+            final companyName =
+                company?['company_name'] ??
+                company?['name'] ??
+                job['company_name'] ??
+                'perusahaan';
 
             String title = "";
             String message = "";
             String type = "";
 
             final s = status.toLowerCase();
+
             if (s == 'ditinjau' || s == 'diproses') {
               title = "Lamaran Ditinjau";
               message =
-                  "Lamaran kamu untuk posisi ${job['title']} sedang ditinjau oleh ${company?['name'] ?? 'perusahaan'}.";
+                  "Lamaran kamu untuk posisi ${job['title']} sedang ditinjau oleh $companyName.";
               type = "application_reviewed";
             } else if (s == 'wawancara') {
               title = "Jadwal Wawancara";
+
               final displayDate =
                   extraData?['interview_display'] ??
                   extraData?['interview_date'] ??
                   '-';
+
               message =
                   "Kamu masuk tahap wawancara untuk ${job['title']}. Jadwal: $displayDate.";
               type = "interview_schedule";
@@ -1042,8 +1053,9 @@ class MongoService {
                 s == 'accepted' ||
                 s == 'lolos') {
               title = "Lamaran Diterima";
-              message = extraData?['accepted_message'] ??
-                  "Selamat! Kamu diterima di ${company?['name'] ?? 'perusahaan'} untuk posisi ${job['title']}.";
+              message =
+                  extraData?['accepted_message'] ??
+                  "Selamat! Kamu diterima di $companyName untuk posisi ${job['title']}.";
               type = "application_accepted";
             } else if (s == 'ditolak' || s == 'rejected') {
               title = "Lamaran Ditolak";
@@ -1063,6 +1075,28 @@ class MongoService {
                 title: title,
                 message: message,
                 type: type,
+                extraData: {
+                  'status_snapshot': status,
+                  'job_title_snapshot': job['title'],
+                  'company_name_snapshot': companyName,
+
+                  if (extraData?['interview_date'] != null)
+                    'interview_date': extraData?['interview_date'],
+                  if (extraData?['interview_display'] != null)
+                    'interview_display': extraData?['interview_display'],
+                  if (extraData?['interview_note'] != null)
+                    'interview_note': extraData?['interview_note'],
+
+                  if (extraData?['accepted_message'] != null)
+                    'accepted_message': extraData?['accepted_message'],
+                  if (extraData?['start_work_date'] != null)
+                    'start_work_date': extraData?['start_work_date'],
+                  if (extraData?['work_info'] != null)
+                    'work_info': extraData?['work_info'],
+
+                  if (extraData?['rejection_reason'] != null)
+                    'rejection_reason': extraData?['rejection_reason'],
+                },
               );
             }
           }
