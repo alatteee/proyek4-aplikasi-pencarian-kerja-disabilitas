@@ -100,6 +100,26 @@ class MongoService {
     return db.collection('companies');
   }
 
+  static Future<bool> updateUserPassword(String email, String passwordHash) async {
+    try {
+      await ensureConnected();
+      final result = await users.update(
+        where.eq('email', email),
+        modify.set('password_hash', passwordHash).set('updated_at', DateTime.now()),
+      );
+      
+      // Log untuk debug
+      print('DEBUG: Update password result: $result');
+      
+      // Beberapa versi driver mongo_dart mengembalikan Map kosong atau result['ok'] == 1.0
+      // Kita anggap sukses jika tidak ada error yang dilempar
+      return true; 
+    } catch (e) {
+      print('Gagal update password: $e');
+      return false;
+    }
+  }
+
   static DbCollection get _notificationsCollection {
     if (!_isDbOpen) throw Exception('Database not connected');
     return db.collection('notifications');
