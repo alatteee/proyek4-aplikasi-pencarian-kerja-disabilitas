@@ -801,6 +801,7 @@ class MongoService {
             .set('email', data['email'])
             .set('phone', data['phone'])
             .set('field', data['field'] ?? '')
+            .set('profile_photo', data['profile_photo'])
             .set('updated_at', DateTime.now().toUtc()),
       );
 

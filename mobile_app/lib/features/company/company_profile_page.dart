@@ -5,6 +5,7 @@ import 'package:mobile_app/features/auth/login_view.dart';
 import 'company_account_settings_page.dart';
 import 'company_help_page.dart';
 import 'company_about_page.dart';
+import 'dart:convert';
 
 class CompanyProfilePage extends StatefulWidget {
   final String companyName;
@@ -421,18 +422,28 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
   }
 
   Widget _buildCompanyLogo() {
+    final String? profilePhoto = companyData?['profile_photo'];
+
     return Container(
       width: 82,
       height: 82,
       decoration: BoxDecoration(
         color: iconBg,
         borderRadius: BorderRadius.circular(19),
+        image: profilePhoto != null
+            ? DecorationImage(
+                image: MemoryImage(base64Decode(profilePhoto)),
+                fit: BoxFit.cover,
+              )
+            : null,
       ),
-      child: const Icon(
-        Icons.apartment_rounded,
-        color: navy,
-        size: 52,
-      ),
+      child: profilePhoto == null
+          ? const Icon(
+              Icons.apartment_rounded,
+              color: navy,
+              size: 52,
+            )
+          : null,
     );
   }
 
