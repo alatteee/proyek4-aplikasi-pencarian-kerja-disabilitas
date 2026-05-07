@@ -7,6 +7,7 @@ import 'company_create_job_page.dart';
 import 'company_profile_page.dart';
 import '../notifications/notification_page.dart';
 import 'dart:convert';
+import 'dart:io';
 
 class CompanyHomePage extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -33,6 +34,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
   Map<String, dynamic>? company;
   List<Map<String, dynamic>> companyJobs = [];
   List<Map<String, dynamic>> applicants = [];
+  final Map<String, String> _applicantPhotoCache = {};
 
   bool isLoading = true;
   bool _isOpeningNotificationPage = false;
@@ -51,6 +53,8 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
   }
 
   Future<void> _loadDashboardData() async {
+    _rememberApplicantPhotos(applicants);
+
     if (mounted) {
       setState(() {
         isLoading = true;
@@ -72,35 +76,55 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
       return;
     }
 
-    final companyData = await MongoService.getCompanyByUserId(userId);
+    try {
+      final companyData = await MongoService.getCompanyByUserId(userId);
 
-    if (companyData == null) {
+      if (companyData == null) {
+        if (!mounted) return;
+
+        setState(() {
+          // Saat refresh offline, jangan hapus data dashboard yang sudah tampil.
+          isLoading = false;
+        });
+
+        return;
+      }
+
+      final companyId = MongoService.getMongoId(companyData['_id']);
+      final jobsData = await MongoService.getCompanyJobs(companyId: companyId);
+      final applicantsData = await MongoService.getCompanyApplicants(
+        companyId: companyId,
+      );
+      final enrichedApplicantsData =
+          await MongoService.enrichApplicantsWithUserDetails(applicantsData);
+
+      final nextApplicants = _mergeApplicantsWithCachedPhotos(
+        enrichedApplicantsData.isEmpty && applicants.isNotEmpty
+            ? applicants
+            : enrichedApplicantsData,
+      );
+
+      _rememberApplicantPhotos(nextApplicants);
+
       if (!mounted) return;
 
       setState(() {
-        company = null;
-        companyJobs = [];
-        applicants = [];
+        company = companyData;
+        companyJobs = jobsData.isEmpty && companyJobs.isNotEmpty
+            ? companyJobs
+            : jobsData;
+        applicants = nextApplicants;
         isLoading = false;
       });
+    } catch (_) {
+      if (!mounted) return;
 
-      return;
+      setState(() {
+        // Kalau request gagal karena offline, pertahankan data lama + foto yang sudah dicache.
+        applicants = _mergeApplicantsWithCachedPhotos(applicants);
+        isLoading = false;
+      });
     }
-
-    final companyId = MongoService.getMongoId(companyData['_id']);
-    final jobsData = await MongoService.getCompanyJobs(companyId: companyId);
-    final applicantsData = await MongoService.getCompanyApplicants(
-      companyId: companyId,
-    );
-
-    if (!mounted) return;
-
-    setState(() {
-      company = companyData;
-      companyJobs = jobsData;
-      applicants = applicantsData;
-      isLoading = false;
-    });
   }
 
   Future<void> _openNotificationPage() async {
@@ -202,6 +226,203 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
     }
 
     return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+  }
+
+  String _cleanBase64Image(String value) {
+    var cleaned = value.trim();
+
+    if (cleaned.contains(',')) {
+      cleaned = cleaned.split(',').last;
+    }
+
+    cleaned = cleaned.replaceAll(RegExp(r'\s+'), '');
+
+    return cleaned;
+  }
+
+  bool _isLikelyLocalFilePath(String value) {
+    return value.startsWith('/data/') ||
+        value.startsWith('/storage/') ||
+        value.startsWith('/sdcard/');
+  }
+
+  Map<String, dynamic>? _mapOrNull(dynamic value) {
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) return Map<String, dynamic>.from(value);
+
+    return null;
+  }
+
+  String? _cacheKeyFromValue(dynamic value) {
+    if (value == null) return null;
+
+    final text = MongoService.getMongoId(value).trim();
+
+    if (text.isEmpty || text == 'null') return null;
+
+    return text;
+  }
+
+  List<String> _getApplicantPhotoCacheKeys(Map<String, dynamic> applicant) {
+    final keys = <String>{};
+    final user = _mapOrNull(applicant['user']);
+    final profile = _mapOrNull(applicant['profile']);
+    final jobSeeker = _mapOrNull(applicant['job_seeker']);
+
+    void addKey(String prefix, dynamic value) {
+      final key = _cacheKeyFromValue(value);
+      if (key != null) keys.add('$prefix:$key');
+    }
+
+    addKey('application', applicant['_id']);
+    addKey('application', applicant['application_id']);
+    addKey('user', applicant['user_id']);
+    addKey('user', applicant['applicant_id']);
+    addKey('user', applicant['job_seeker_id']);
+    addKey('profile', applicant['profile_id']);
+    addKey('user', user?['_id']);
+    addKey('user', user?['id']);
+    addKey('profile', profile?['_id']);
+    addKey('profile', profile?['id']);
+    addKey('user', jobSeeker?['_id']);
+    addKey('user', jobSeeker?['id']);
+    addKey('email', applicant['email']);
+    addKey('name', applicant['full_name']);
+
+    return keys.toList(growable: false);
+  }
+
+  String _getApplicantProfilePhoto(Map<String, dynamic> applicant) {
+    final user = _mapOrNull(applicant['user']);
+    final profile = _mapOrNull(applicant['profile']);
+    final jobSeeker = _mapOrNull(applicant['job_seeker']);
+
+    final value = applicant['profile_photo'] ??
+        applicant['profilePhoto'] ??
+        applicant['photo'] ??
+        applicant['avatar'] ??
+        user?['profile_photo'] ??
+        user?['profilePhoto'] ??
+        user?['photo'] ??
+        user?['avatar'] ??
+        profile?['profile_photo'] ??
+        profile?['profilePhoto'] ??
+        profile?['photo'] ??
+        profile?['avatar'] ??
+        jobSeeker?['profile_photo'] ??
+        jobSeeker?['profilePhoto'] ??
+        jobSeeker?['photo'] ??
+        jobSeeker?['avatar'];
+
+    return value?.toString() ?? '';
+  }
+
+  void _rememberApplicantPhotos(List<Map<String, dynamic>> source) {
+    for (final applicant in source) {
+      final photo = _getApplicantProfilePhoto(applicant).trim();
+      if (photo.isEmpty) continue;
+
+      for (final key in _getApplicantPhotoCacheKeys(applicant)) {
+        _applicantPhotoCache[key] = photo;
+      }
+    }
+  }
+
+  String _getCachedApplicantPhoto(Map<String, dynamic> applicant) {
+    for (final key in _getApplicantPhotoCacheKeys(applicant)) {
+      final cachedPhoto = _applicantPhotoCache[key]?.trim() ?? '';
+      if (cachedPhoto.isNotEmpty) return cachedPhoto;
+    }
+
+    return '';
+  }
+
+  List<Map<String, dynamic>> _mergeApplicantsWithCachedPhotos(
+    List<Map<String, dynamic>> source,
+  ) {
+    return source.map((applicant) {
+      final mergedApplicant = Map<String, dynamic>.from(applicant);
+      final currentPhoto = _getApplicantProfilePhoto(mergedApplicant).trim();
+
+      if (currentPhoto.isEmpty) {
+        final cachedPhoto = _getCachedApplicantPhoto(mergedApplicant);
+
+        if (cachedPhoto.isNotEmpty) {
+          mergedApplicant['profile_photo'] = cachedPhoto;
+        }
+      }
+
+      return mergedApplicant;
+    }).toList(growable: false);
+  }
+
+  Widget _buildApplicantAvatar({
+    required String name,
+    required String profilePhoto,
+    double radius = 26,
+  }) {
+    Widget fallbackAvatar() {
+      return CircleAvatar(
+        radius: radius,
+        backgroundColor: lightBlue,
+        child: Text(
+          _getInitials(name),
+          style: TextStyle(
+            color: CompanyHomePage.navy,
+            fontSize: radius >= 34 ? 22 : 14,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      );
+    }
+
+    final photo = profilePhoto.trim();
+
+    if (photo.isEmpty) {
+      return fallbackAvatar();
+    }
+
+    try {
+      if (photo.startsWith('http')) {
+        return ClipOval(
+          child: Image.network(
+            photo,
+            width: radius * 2,
+            height: radius * 2,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => fallbackAvatar(),
+          ),
+        );
+      }
+
+      if (_isLikelyLocalFilePath(photo)) {
+        return ClipOval(
+          child: Image.file(
+            File(photo),
+            width: radius * 2,
+            height: radius * 2,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => fallbackAvatar(),
+          ),
+        );
+      }
+
+      final cleanedPhoto = _cleanBase64Image(photo);
+      final bytes = base64Decode(cleanedPhoto);
+
+      return ClipOval(
+        child: Image.memory(
+          bytes,
+          width: radius * 2,
+          height: radius * 2,
+          fit: BoxFit.cover,
+          gaplessPlayback: true,
+          errorBuilder: (_, __, ___) => fallbackAvatar(),
+        ),
+      );
+    } catch (_) {
+      return fallbackAvatar();
+    }
   }
 
   int get activeJobCount {
@@ -437,10 +658,11 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
     return Column(
       children: latestApplicants.map((applicant) {
         final name = applicant['full_name']?.toString() ?? 'Pelamar';
+        final profilePhoto = _getApplicantProfilePhoto(applicant);
 
         return _buildApplicantCard(
-          initials: _getInitials(name),
           name: name,
+          profilePhoto: profilePhoto,
           jobTitle: applicant['job_title']?.toString() ?? '-',
           date: _formatDate(applicant['created_at']),
           status: applicant['status']?.toString() ?? 'pending',
@@ -784,8 +1006,8 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
   }
 
   Widget _buildApplicantCard({
-    required String initials,
     required String name,
+    required String profilePhoto,
     required String jobTitle,
     required String date,
     required String status,
@@ -797,17 +1019,10 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
       decoration: _cardDecoration(),
       child: Row(
         children: [
-          CircleAvatar(
+          _buildApplicantAvatar(
+            name: name,
+            profilePhoto: profilePhoto,
             radius: 26,
-            backgroundColor: lightBlue,
-            child: Text(
-              initials,
-              style: const TextStyle(
-                color: CompanyHomePage.navy,
-                fontSize: 14,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
           ),
           const SizedBox(width: 14),
           Expanded(
