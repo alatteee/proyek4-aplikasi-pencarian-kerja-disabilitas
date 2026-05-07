@@ -131,11 +131,32 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
     }
   }
 
+  String? _textOrNull(dynamic value) {
+    final text = value?.toString().trim();
+
+    if (text == null || text.isEmpty) return null;
+
+    return text;
+  }
+
   String _getCompanyName() {
-    return widget.userData['company_name']?.toString() ??
-        widget.userData['companyName']?.toString() ??
-        widget.userData['name']?.toString() ??
-        'PT Maju Bersama';
+    return _textOrNull(company?['company_name']) ??
+        _textOrNull(company?['name']) ??
+        _textOrNull(widget.userData['company_name']) ??
+        _textOrNull(widget.userData['companyName']) ??
+        _textOrNull(widget.userData['username']) ??
+        _textOrNull(widget.userData['name']) ??
+        'Perusahaan';
+  }
+
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+
+    if (hour < 11) return 'Selamat Pagi';
+    if (hour < 15) return 'Selamat Siang';
+    if (hour < 18) return 'Selamat Sore';
+
+    return 'Selamat Malam';
   }
 
   String _formatDate(dynamic value) {
@@ -230,7 +251,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
 
       case 3:
         return CompanyProfilePage(
-          companyName: company?['company_name']?.toString() ?? _getCompanyName(),
+          companyName: _getCompanyName(),
           userData: widget.userData,
         );
 
@@ -240,7 +261,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
   }
 
   Widget _buildDashboardContent() {
-    final companyName = company?['company_name']?.toString() ?? _getCompanyName();
+    final companyName = _getCompanyName();
 
     return RefreshIndicator(
       onRefresh: _loadDashboardData,
@@ -253,7 +274,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
             _buildHeader(),
             const SizedBox(height: 26),
             Text(
-              'Halo, $companyName. Selamat Pagi!',
+              'Halo, $companyName. ${_getGreeting()}!',
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
@@ -569,8 +590,7 @@ class _CompanyHomePageState extends State<CompanyHomePage> {
           MaterialPageRoute(
             builder: (_) => CompanyCreateJobPage(
               companyId: MongoService.getMongoId(company!['_id']),
-              companyName:
-                  company!['company_name']?.toString() ?? _getCompanyName(),
+              companyName: _getCompanyName(),
             ),
           ),
         );
