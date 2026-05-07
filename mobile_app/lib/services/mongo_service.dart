@@ -1,5 +1,8 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:mongo_dart/mongo_dart.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'offline_service.dart';
+import 'connectivity_service.dart';
 
 class MongoService {
   static late Db db;
@@ -8,6 +11,20 @@ class MongoService {
   static late DbCollection cvs;
 
   static bool _isConnecting = false;
+
+  /// Tutup koneksi lama dengan paksa dan reset semua reference
+  static Future<void> _forceCloseOldConnection() async {
+    try {
+      if (db != null) {
+        try {
+          await db.close();
+          print('🔴 Old MongoDB connection closed');
+        } catch (e) {
+          print('⚠️ Error closing old connection: $e');
+        }
+      }
+    } catch (_) {}
+  }
 
   static Future<void> connect() async {
     final uri = dotenv.env['MONGODB_URI'];
@@ -21,6 +38,9 @@ class MongoService {
 
     _isConnecting = true;
     try {
+      // Tutup koneksi lama sebelum membuat yang baru
+      await _forceCloseOldConnection();
+
       String finalUri = uri;
       if (!finalUri.contains('tls=')) {
         final separator = finalUri.contains('?') ? '&' : '?';
@@ -28,7 +48,7 @@ class MongoService {
             '${separator}tls=true&safeAtlas=true&keepAlive=true&connectTimeoutMS=10000&socketTimeoutMS=45000&maxIdleTimeMS=10000';
       }
 
-      print('🔄 Connecting to MongoDB Atlas...');
+      print('🔄 Connecting to MongoDB Atlas (fresh connection)...');
       db = await Db.create(finalUri);
       await db.open();
 
@@ -36,7 +56,7 @@ class MongoService {
       userDetails = db.collection('user_details');
       cvs = db.collection('cvs');
 
-      print('✅ MongoDB Connected');
+      print('✅ MongoDB Connected (NEW)');
     } catch (e) {
       print('❌ Gagal koneksi ke MongoDB: $e');
       try {
@@ -57,15 +77,60 @@ class MongoService {
     }
   }
 
+  /// Truly verify connection by actually querying the database (not just checking state)
+  static Future<bool> verifyConnected() async {
+    try {
+      if (!_isDbOpen) {
+        print('⚠️ verifyConnected: DB state not open');
+        return false;
+      }
+
+      // Coba ping dengan query minimal ke collection users
+      final result = await users.findOne(where.limit(1));
+      print('✅ verifyConnected: DB connection is LIVE');
+      return true;
+    } catch (e) {
+      print('❌ verifyConnected FAILED: $e');
+      return false;
+    }
+  }
+
   static Future<void> ensureConnected() async {
+    final hasConnection = await connectivityService.checkConnection();
+    if (!hasConnection) {
+      print('DEBUG: ensureConnected skipped - No Internet');
+      return; 
+    }
+
     if (!_isDbOpen) {
-      print('🔄 Membuka kembali koneksi MongoDB yang terputus...');
+      print('🔄 MongoDB disconnected. Force reconnecting...');
+      
+      // Reset flag koneksi yang sedang berlangsung jika terjadi stall
+      if (_isConnecting) {
+        print('⚠️ Previous connection attempt is still in progress. Aborting it.');
+        _isConnecting = false;
+        await _forceCloseOldConnection();
+      }
+      
+      // Tunggu jangan langsung connect, beri waktu cleanup
+      await Future.delayed(const Duration(milliseconds: 200));
+      
       await connect();
 
+      // Tunggu lebih lama sampai benar-benar terbuka
       int retries = 0;
-      while (!_isDbOpen && retries < 5) {
+      while (!_isDbOpen && retries < 15) {
         await Future.delayed(const Duration(milliseconds: 500));
         retries++;
+        if (retries % 5 == 0) {
+          print('⏳ Waiting for DB connection... (${retries * 500}ms)');
+        }
+      }
+
+      if (!_isDbOpen) {
+        print('❌ Failed to reconnect after 15 retries (7.5s)');
+      } else {
+        print('✅ Reconnection successful!');
       }
     }
 
@@ -74,9 +139,16 @@ class MongoService {
       userDetails = db.collection('user_details');
       cvs = db.collection('cvs');
     } else {
-      throw Exception(
-        'MongoDart Error: No master connection (Reconnection failed)',
-      );
+      print('⚠️ WARNING: MongoDB still not connected. Will use cache fallback.');
+    }
+  }
+
+  static Future<void> tryReconnect() async {
+    if (_isConnecting) return;
+    try {
+      await connect();
+    } catch (e) {
+      print('Reconnection attempt failed: $e');
     }
   }
 
@@ -224,7 +296,18 @@ class MongoService {
     required String receiverRole,
   }) async {
     try {
+      final hasConnection = await connectivityService.checkConnection();
+      if (!hasConnection) {
+        print('DEBUG: No internet for notifications count. Returning 0.');
+        return 0;
+      }
+
       await ensureConnected();
+
+      if (MongoService.db.state != State.open) {
+        print('⚠️ DB not ready for notification count. Returning 0.');
+        return 0;
+      }
 
       final candidates = _idCandidates(receiverId);
 
@@ -237,7 +320,7 @@ class MongoService {
 
       return count;
     } catch (e) {
-      print('Gagal menghitung notifikasi belum dibaca: $e');
+      print('❌ Gagal menghitung notifikasi belum dibaca: $e');
       return 0;
     }
   }
@@ -245,7 +328,18 @@ class MongoService {
   static String getMongoId(dynamic value) {
     if (value == null) return '';
     if (value is ObjectId) return value.oid;
-    return value.toString();
+    
+    final str = value.toString();
+    
+    // Handle string representation like 'ObjectId("...")'
+    final hexRegExp = RegExp(r'[0-9a-fA-F]{24}');
+    final match = hexRegExp.firstMatch(str);
+    if (match != null) {
+      return match.group(0)!; // Extract the hex string
+    }
+    
+    // Return as-is if it's already a valid hex string
+    return str;
   }
 
   static ObjectId? _tryParseObjectId(dynamic value) {
@@ -286,6 +380,28 @@ class MongoService {
     }
 
     return candidates.toList();
+  }
+
+  /// Sanitize map untuk disimpan ke Hive/pending sync queue
+  /// Mengkonversi ObjectId dan tipe non-Hive lainnya ke String
+  static Map<String, dynamic> _sanitizeMapForSync(Map<String, dynamic> rawData) {
+    final Map<String, dynamic> sanitized = {};
+    rawData.forEach((key, value) {
+      if (value is Map) {
+        sanitized[key] = _sanitizeMapForSync(Map<String, dynamic>.from(value));
+      } else if (value is List) {
+        sanitized[key] = value.map((e) {
+          if (e is Map) return _sanitizeMapForSync(Map<String, dynamic>.from(e));
+          if (e.runtimeType.toString().contains('ObjectId')) return e.toString();
+          return e;
+        }).toList();
+      } else if (value.runtimeType.toString().contains('ObjectId')) {
+        sanitized[key] = value.toString();
+      } else {
+        sanitized[key] = value;
+      }
+    });
+    return sanitized;
   }
 
   static Future<Map<String, dynamic>?> getUserById(dynamic userId) async {
@@ -514,6 +630,11 @@ class MongoService {
     required String userId,
   }) async {
     try {
+      final hasConnection = await connectivityService.checkConnection();
+      if (!hasConnection) {
+        return <String>{};
+      }
+
       await ensureConnected();
 
       if (userId.isEmpty) return <String>{};
@@ -603,7 +724,18 @@ class MongoService {
     required dynamic jobId,
   }) async {
     try {
-      await ensureConnected();
+      final hasConnection = await connectivityService.checkConnection();
+      if (!hasConnection) {
+        print('📱 hasAppliedJob: Offline, returning false');
+        return false;
+      }
+
+      // Cek dengan truly verify
+      final isLive = await verifyConnected();
+      if (!isLive) {
+        print('⚠️ hasAppliedJob: DB not live, returning false');
+        return false;
+      }
 
       if (userId == null || jobId == null) return false;
 
@@ -628,13 +760,44 @@ class MongoService {
     required Map<String, dynamic> applicationData,
   }) async {
     try {
-      await ensureConnected();
-
+      // ✅ STEP 1: Cache application lokal SEGERA JADI UI LANGSUNG UPDATED
       final userId = applicationData['user_id'];
-      final jobId = applicationData['job_id'];
+      if (userId != null) {
+        final uidStr = (userId is ObjectId) ? userId.toHexString() : userId.toString();
+        final cachedApps = OfflineService.getCachedApplications();
+        // Masukkan data dengan timestamp agar terlihat baru
+        final appToCache = Map<String, dynamic>.from(applicationData);
+        appToCache['created_at'] = DateTime.now().toUtc();
+        appToCache['_id'] = ObjectId(); // Generate temporary ID
+        cachedApps.insert(0, appToCache);
+        await OfflineService.cacheApplications(cachedApps);
+        print('✅ Application cached locally immediately');
+      }
 
-      if (userId == null || jobId == null) {
-        print('DEBUG: userId or jobId is null');
+      // ✅ STEP 2: Check koneksi internet
+      final hasConnection = await connectivityService.checkConnection();
+      if (!hasConnection) {
+        print('📱 Offline: Application queued for sync');
+        final dataToQueue = _sanitizeMapForSync(applicationData);
+        await OfflineService.addToSyncQueue('apply_job', dataToQueue);
+        return true; // UI sudah updated dari cache, safe return true
+      }
+
+      // ✅ STEP 3: Ensure connected (tapi dengan truly verify)
+      await ensureConnected();
+      
+      // ✅ STEP 4: Truly verify koneksi sebelum proceed
+      final isLive = await verifyConnected();
+      if (!isLive) {
+        print('⚠️ DB state.open tapi tidak bisa reach. Queueing for sync.');
+        final dataToQueue = _sanitizeMapForSync(applicationData);
+        await OfflineService.addToSyncQueue('apply_job', dataToQueue);
+        return true; // Cache sudah ada, return true
+      }
+
+      final jobId = applicationData['job_id'];
+      if (jobId == null) {
+        print('DEBUG: jobId is null');
         return false;
       }
 
@@ -658,7 +821,7 @@ class MongoService {
       final result = await _jobApplicationsCollection.insertOne(finalAppData);
       final insertedId = result.id;
 
-      print('DEBUG: Application inserted with ID: $insertedId');
+      print('✅ Application successfully sent to server with ID: $insertedId');
 
       try {
         final job = await getJobById(jId);
@@ -687,21 +850,18 @@ class MongoService {
               message: message,
               type: 'new_application',
             );
-            print('DEBUG: Notification to company created');
-          } else {
-            print('DEBUG: Company or Company User ID not found');
+            print('✅ Notification to company created');
           }
-        } else {
-          print('DEBUG: Job not found for ID: $jId');
         }
       } catch (ne) {
-        print('DEBUG Error creating notification: $ne');
+        print('⚠️ Error creating notification: $ne');
       }
 
       return true;
     } catch (e) {
-      print('Gagal mengirim lamaran: $e');
-      return false;
+      print('❌ submitJobApplication error: $e');
+      // Cache sudah diupdate di step 1, jadi return true
+      return true;
     }
   }
 
@@ -709,7 +869,20 @@ class MongoService {
     required dynamic userId,
   }) async {
     try {
+      final hasConnection = await connectivityService.checkConnection();
+      if (!hasConnection) {
+        print('📱 Offline: getUserApplications using cache');
+        return OfflineService.getCachedApplications();
+      }
+
       await ensureConnected();
+
+      // Truly verify koneksi
+      final isLive = await verifyConnected();
+      if (!isLive) {
+        print('⚠️ DB not live. Using cache for applications.');
+        return OfflineService.getCachedApplications();
+      }
 
       if (userId == null) return [];
 
@@ -724,6 +897,9 @@ class MongoService {
           )
           .toList();
 
+      // Update cache
+      await OfflineService.cacheApplications(applications);
+
       // Secara otomatis melengkapi job_photo jika belum ada di data lamaran
       for (var app in applications) {
         if (app['job_photo'] == null && app['job_id'] != null) {
@@ -734,10 +910,13 @@ class MongoService {
         }
       }
 
-      return applications.cast<Map<String, dynamic>>();
+      final castedApps = applications.cast<Map<String, dynamic>>();
+      OfflineService.cacheApplications(castedApps);
+
+      return castedApps;
     } catch (e) {
       print('Gagal mengambil data lamaran: $e');
-      return [];
+      return OfflineService.getCachedApplications();
     }
   }
 
@@ -747,7 +926,40 @@ class MongoService {
     String companyName,
   ) async {
     try {
+      final hasConnection = await connectivityService.checkConnection();
+      if (!hasConnection) {
+        print('📱 Company Profile (by name): Offline. Using cache.');
+        try {
+          final cachedCompanies = Hive.box('offline_company_profile').values;
+          for (var cached in cachedCompanies) {
+            if (cached is Map && cached['company_name'] == companyName) {
+              return Map<String, dynamic>.from(cached);
+            }
+          }
+        } catch (e) {
+          print('Cache read error: $e');
+        }
+        return null;
+      }
+
       await ensureConnected();
+
+      // Truly verify koneksi
+      final isLive = await verifyConnected();
+      if (!isLive) {
+        print('⚠️ Company Profile (by name): DB not live. Using cache.');
+        try {
+          final cachedCompanies = Hive.box('offline_company_profile').values;
+          for (var cached in cachedCompanies) {
+            if (cached is Map && cached['company_name'] == companyName) {
+              return Map<String, dynamic>.from(cached);
+            }
+          }
+        } catch (e) {
+          print('Cache read error: $e');
+        }
+        return null;
+      }
 
       if (companyName.isEmpty) return null;
 
@@ -757,7 +969,18 @@ class MongoService {
 
       return company;
     } catch (e) {
-      print('Gagal mengambil data company: $e');
+      print('❌ Error getCompanyByName: $e');
+      // Try cache fallback
+      try {
+        final cachedCompanies = Hive.box('offline_company_profile').values;
+        for (var cached in cachedCompanies) {
+          if (cached is Map && cached['company_name'] == companyName) {
+            return Map<String, dynamic>.from(cached);
+          }
+        }
+      } catch (cacheError) {
+        print('Cache fallback error: $cacheError');
+      }
       return null;
     }
   }
@@ -766,7 +989,21 @@ class MongoService {
     dynamic userId,
   ) async {
     try {
+      final uIdStr = userId?.toString();
+      final hasConnection = await connectivityService.checkConnection();
+      if (!hasConnection && uIdStr != null) {
+        print('📱 Company Profile: Offline. Using cache.');
+        return OfflineService.getCachedCompanyProfile(uIdStr);
+      }
+
       await ensureConnected();
+
+      // Truly verify koneksi
+      final isLive = await verifyConnected();
+      if (!isLive && uIdStr != null) {
+        print('⚠️ Company Profile: DB not live. Using cache.');
+        return OfflineService.getCachedCompanyProfile(uIdStr);
+      }
 
       if (userId == null) return null;
 
@@ -775,12 +1012,29 @@ class MongoService {
           where.eq('user_id', candidate),
         );
 
-        if (company != null) return company;
+        if (company != null) {
+          if (uIdStr != null) {
+            OfflineService.cacheCompanyProfile(uIdStr, company);
+          }
+          return company;
+        }
+      }
+
+      // Kalau DB tidak ada tapi cache ada, gunakan cache
+      if (uIdStr != null) {
+        final cachedCompany = OfflineService.getCachedCompanyProfile(uIdStr);
+        if (cachedCompany != null) {
+          print('💾 Company Profile: Using cached profile (DB has none)');
+          return cachedCompany;
+        }
       }
 
       return null;
     } catch (e) {
-      print('Gagal mengambil data company by user id: $e');
+      print('❌ Error getCompanyByUserId: $e');
+      if (userId != null) {
+        return OfflineService.getCachedCompanyProfile(userId.toString());
+      }
       return null;
     }
   }
@@ -820,7 +1074,38 @@ class MongoService {
     required Map<String, dynamic> data,
   }) async {
     try {
+      final hasConnection = await connectivityService.checkConnection();
+      if (!hasConnection) {
+        print('📱 Company Profile Update: Offline. Queueing sync.');
+        // Update local cache
+        if (data['user_id'] != null) {
+          await OfflineService.cacheCompanyProfile(data['user_id'].toString(), data);
+        }
+        // Sanitized data ada di addToSyncQueue sekarang, tapi tetap queue yang clean
+        final dataToQueue = _sanitizeMapForSync(data);
+        await OfflineService.addToSyncQueue('update_company_profile', {
+          'companyId': companyId,
+          'data': dataToQueue,
+        });
+        return true;
+      }
+
       await ensureConnected();
+
+      // Verify koneksi sebelum operasi DB
+      final isLive = await verifyConnected();
+      if (!isLive) {
+        print('⚠️ Company Profile Update: DB not live. Queueing sync.');
+        if (data['user_id'] != null) {
+          await OfflineService.cacheCompanyProfile(data['user_id'].toString(), data);
+        }
+        final dataToQueue = _sanitizeMapForSync(data);
+        await OfflineService.addToSyncQueue('update_company_profile', {
+          'companyId': companyId,
+          'data': dataToQueue,
+        });
+        return true;
+      }
 
       if (companyId.isEmpty) return false;
 
@@ -837,10 +1122,30 @@ class MongoService {
             .set('updated_at', DateTime.now().toUtc()),
       );
 
+      // Update cache
+      if (data['user_id'] != null) {
+        await OfflineService.cacheCompanyProfile(data['user_id'].toString(), data);
+      }
+
       return true;
     } catch (e) {
-      print('Gagal update profil company: $e');
-      return false;
+      print('❌ Error updateCompanyProfile: $e');
+      // Fallback: cache dan queue untuk sync nanti
+      try {
+        if (data['user_id'] != null) {
+          await OfflineService.cacheCompanyProfile(data['user_id'].toString(), data);
+          final dataToQueue = _sanitizeMapForSync(data);
+          await OfflineService.addToSyncQueue('update_company_profile', {
+            'companyId': companyId,
+            'data': dataToQueue,
+          });
+          return true;
+        }
+        return false;
+      } catch (fallbackError) {
+        print('Fallback error: $fallbackError');
+        return false;
+      }
     }
   }
 
@@ -848,7 +1153,21 @@ class MongoService {
     required dynamic companyId,
   }) async {
     try {
+      final cIdStr = companyId?.toString();
+      final hasConnection = await connectivityService.checkConnection();
+      if (!hasConnection && cIdStr != null) {
+        print('📱 Company Jobs: Offline. Using cache.');
+        return OfflineService.getCachedCompanyJobs(cIdStr);
+      }
+
       await ensureConnected();
+
+      // Truly verify koneksi
+      final isLive = await verifyConnected();
+      if (!isLive && cIdStr != null) {
+        print('⚠️ Company Jobs: DB not live. Using cache.');
+        return OfflineService.getCachedCompanyJobs(cIdStr);
+      }
 
       if (companyId == null) return [];
 
@@ -862,9 +1181,17 @@ class MongoService {
           )
           .toList();
 
-      return jobs.cast<Map<String, dynamic>>();
+      final castedJobs = jobs.cast<Map<String, dynamic>>();
+      if (cIdStr != null) {
+        OfflineService.cacheCompanyJobs(cIdStr, castedJobs);
+      }
+
+      return castedJobs;
     } catch (e) {
-      print('Gagal mengambil lowongan company: $e');
+      print('❌ Error getCompanyJobs: $e');
+      if (companyId != null) {
+        return OfflineService.getCachedCompanyJobs(companyId.toString());
+      }
       return [];
     }
   }
@@ -873,7 +1200,21 @@ class MongoService {
     required dynamic companyId,
   }) async {
     try {
+      final cIdStr = companyId?.toString();
+      final hasConnection = await connectivityService.checkConnection();
+      if (!hasConnection && cIdStr != null) {
+        print('📱 Company Applicants: Offline. Using cache.');
+        return OfflineService.getCachedCompanyApplicants(cIdStr);
+      }
+
       await ensureConnected();
+
+      // Truly verify koneksi
+      final isLive = await verifyConnected();
+      if (!isLive && cIdStr != null) {
+        print('⚠️ Company Applicants: DB not live. Using cache.');
+        return OfflineService.getCachedCompanyApplicants(cIdStr);
+      }
 
       if (companyId == null) return [];
 
@@ -894,9 +1235,19 @@ class MongoService {
           )
           .toList();
 
-      return applicants.cast<Map<String, dynamic>>();
+      final castedApplicants = applicants.cast<Map<String, dynamic>>();
+      
+      // Cache hasil
+      if (cIdStr != null) {
+        OfflineService.cacheCompanyApplicants(cIdStr, castedApplicants);
+      }
+
+      return castedApplicants;
     } catch (e) {
-      print('Gagal mengambil pelamar company: $e');
+      print('❌ Error getCompanyApplicants: $e');
+      if (companyId != null) {
+        return OfflineService.getCachedCompanyApplicants(companyId.toString());
+      }
       return [];
     }
   }
@@ -1173,7 +1524,20 @@ class MongoService {
 
   static Future<List<Map<String, dynamic>>> getPublishedJobs() async {
     try {
+      // Periksa koneksi internet sebelum mencoba ke MongoDB
+      final hasConnection = await connectivityService.checkConnection();
+      if (!hasConnection) {
+        print('DEBUG: Offline mode detected, fetching from Hive cache');
+        return OfflineService.getCachedJobs();
+      }
+
       await ensureConnected();
+
+      // Proteksi tambahan: jika DB masih tidak siap, gunakan cache
+      if (MongoService.db.state != State.open) {
+        print('⚠️ DB not ready after ensureConnected. Using cache for jobs.');
+        return OfflineService.getCachedJobs();
+      }
 
       final jobs = await _jobVacanciesCollection
           .find(
@@ -1184,10 +1548,16 @@ class MongoService {
           )
           .toList();
 
-      return jobs.cast<Map<String, dynamic>>();
+      final castedJobs = jobs.cast<Map<String, dynamic>>();
+      
+      // Update cache Hive di background
+      OfflineService.cacheJobs(castedJobs);
+
+      return castedJobs;
     } catch (e) {
-      print('Gagal mengambil lowongan terpublikasi: $e');
-      return [];
+      print('❌ Gagal mengambil lowongan terpublikasi: $e');
+      // Jika gagal konek ke Mongo tapi ada internet, coba ambil dari cache sebagai fallback
+      return OfflineService.getCachedJobs();
     }
   }
 }
