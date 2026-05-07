@@ -45,12 +45,13 @@ class _LoginViewState extends State<LoginView> {
 
       final role = user['role']?.toString();
 
-      Navigator.of(context).pushReplacement(
+      Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
           builder: (_) => role == 'company'
               ? CompanyHomePage(userData: user, showSuccessDialog: true)
               : HomePage(userData: user, showSuccessDialog: true),
         ),
+        (route) => false,
       );
     } else {
       if (!mounted) return;

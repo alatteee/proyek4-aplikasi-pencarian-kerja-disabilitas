@@ -6,6 +6,7 @@ import 'company_account_settings_page.dart';
 import 'company_help_page.dart';
 import 'company_about_page.dart';
 import 'dart:convert';
+import '../../services/offline_service.dart';
 
 class CompanyProfilePage extends StatefulWidget {
   final String companyName;
@@ -219,8 +220,11 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
                       child: SizedBox(
                         height: 48,
                         child: ElevatedButton(
-                          onPressed: () {
+                          onPressed: () async {
                             Navigator.pop(dialogContext);
+
+                            await OfflineService.clearLoggedInUser();
+                            if (!context.mounted) return;
 
                             Navigator.of(context).pushAndRemoveUntil(
                               MaterialPageRoute(

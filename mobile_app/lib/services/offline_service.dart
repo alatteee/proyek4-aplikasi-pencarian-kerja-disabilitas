@@ -9,6 +9,7 @@ class OfflineService {
   static const String companyJobsBoxName = 'offline_company_jobs';       
   static const String companyApplicantsBoxName = 'offline_company_applicants'; // Pelamar untuk company
   static const String pendingSyncBoxName = 'pending_sync';
+  static const String settingsBoxName = 'app_settings';
 
   static Future<void> init() async {
     await Hive.initFlutter();
@@ -20,6 +21,7 @@ class OfflineService {
     await Hive.openBox(companyJobsBoxName);
     await Hive.openBox(companyApplicantsBoxName);
     await Hive.openBox(pendingSyncBoxName);
+    await Hive.openBox(settingsBoxName);
   }
 
   // --- User Profile (Pencaker) ---
@@ -178,5 +180,32 @@ class OfflineService {
 
   static Future<void> clearSyncQueue() async {
     await Hive.box(pendingSyncBoxName).clear();
+  }
+
+  // --- App Settings & Auth ---
+  static bool get hasSeenOnboarding {
+    final box = Hive.box(settingsBoxName);
+    return box.get('hasSeenOnboarding', defaultValue: false);
+  }
+
+  static Future<void> setHasSeenOnboarding(bool value) async {
+    final box = Hive.box(settingsBoxName);
+    await box.put('hasSeenOnboarding', value);
+  }
+
+  static Map<String, dynamic>? getLoggedInUser() {
+    final box = Hive.box(settingsBoxName);
+    final data = box.get('loggedInUser');
+    return data != null ? Map<String, dynamic>.from(data) : null;
+  }
+
+  static Future<void> setLoggedInUser(Map<String, dynamic> user) async {
+    final box = Hive.box(settingsBoxName);
+    await box.put('loggedInUser', _sanitizeForHive(user));
+  }
+
+  static Future<void> clearLoggedInUser() async {
+    final box = Hive.box(settingsBoxName);
+    await box.delete('loggedInUser');
   }
 }

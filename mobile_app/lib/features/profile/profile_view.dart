@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../auth/login_view.dart';
 import 'profile_detail_view.dart';
@@ -10,6 +10,7 @@ import 'profile_controller.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'accessibility_settings_view.dart';
+import '../../services/offline_service.dart';
 
 class ProfileView extends StatefulWidget {
   final Map<String, dynamic> currentUser;
@@ -497,7 +498,9 @@ class _ProfileViewState extends State<ProfileView> {
                         child: SizedBox(
                           height: 54,
                           child: ElevatedButton(
-                            onPressed: () {
+                            onPressed: () async {
+                              await OfflineService.clearLoggedInUser();
+                              if (!context.mounted) return;
                               Navigator.of(context).pushAndRemoveUntil(
                                 MaterialPageRoute(
                                   builder: (_) => const LoginView(),

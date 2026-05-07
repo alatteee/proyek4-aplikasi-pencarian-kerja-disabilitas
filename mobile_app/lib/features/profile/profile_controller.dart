@@ -1,4 +1,4 @@
-﻿import 'package:mongo_dart/mongo_dart.dart';
+import 'package:mongo_dart/mongo_dart.dart';
 import '../../services/mongo_service.dart';
 import '../../services/connectivity_service.dart';
 import '../../services/offline_service.dart';
@@ -6,12 +6,15 @@ import '../auth/auth_controller.dart';
 
 class ProfileController {
   
-  static Future<Map<String, dynamic>?> getProfileByUserId(ObjectId userId) async {
+  static Future<Map<String, dynamic>?> getProfileByUserId(dynamic userId) async {
     try {
+      final String idString = userId is ObjectId ? userId.toHexString() : userId.toString();
+      final ObjectId? objId = userId is ObjectId ? userId : _tryParseObjectId(userId);
+      
       final hasConnection = await connectivityService.checkConnection();
       if (!hasConnection) {
         print('📱 Profile: Offline. Using cache.');
-        return OfflineService.getCachedUserProfile(userId.toHexString());
+        return OfflineService.getCachedUserProfile(idString);
       }
 
       // Cek dengan truly verify connection
@@ -23,14 +26,15 @@ class ProfileController {
         return OfflineService.getCachedUserProfile(userId.toHexString());
       }
 
-      final profile = await MongoService.userDetails.findOne(where.eq('user_id', userId));
+      if (objId == null) return null;
+      final profile = await MongoService.userDetails.findOne(where.eq('user_id', objId));
       
       if (profile != null) {
         // Update cache dengan data terbaru
-        await OfflineService.cacheUserProfile(userId.toHexString(), profile);
+        await OfflineService.cacheUserProfile(idString, profile);
       } else {
         // Kalau DB tidak ada tapi cache ada, gunakan cache
-        final cachedProfile = OfflineService.getCachedUserProfile(userId.toHexString());
+        final cachedProfile = OfflineService.getCachedUserProfile(idString);
         if (cachedProfile != null) {
           print('💾 Profile: Using cached profile (DB has none)');
           return cachedProfile;
@@ -40,12 +44,27 @@ class ProfileController {
       return profile;
     } catch (e) {
       print('❌ Error getProfileByUserId: $e');
+      final String idString = userId is ObjectId ? userId.toHexString() : userId.toString();
       // Fallback ke cache saat error
-      return OfflineService.getCachedUserProfile(userId.toHexString());
+      return OfflineService.getCachedUserProfile(idString);
     }
   }
 
-  static Future<bool> profileExists(ObjectId userId) async {
+  static ObjectId? _tryParseObjectId(dynamic value) {
+    if (value == null) return null;
+    if (value is ObjectId) return value;
+    final str = value.toString();
+    final hexRegExp = RegExp(r'[0-9a-fA-F]{24}');
+    final match = hexRegExp.firstMatch(str);
+    if (match == null) return null;
+    try {
+      return ObjectId.fromHexString(match.group(0)!);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<bool> profileExists(dynamic userId) async {
     try {
       final profile = await getProfileByUserId(userId);
       return profile != null;
@@ -54,8 +73,11 @@ class ProfileController {
     }
   }
 
-  static Future<bool> updatePassword(ObjectId userId, String oldPassword, String newPassword) async {
+  static Future<bool> updatePassword(dynamic userId, String oldPassword, String newPassword) async {
     try {
+      final ObjectId? objId = userId is ObjectId ? userId : _tryParseObjectId(userId);
+      if (objId == null) return false;
+
       // Password update biasanya membutuhkan koneksi real-time
       final hasConnection = await connectivityService.checkConnection();
       if (!hasConnection) return false;
@@ -67,7 +89,7 @@ class ProfileController {
 
       // 2. Cari user dengan ID dan SHA-256 hash password lama yang sesuai
       final user = await MongoService.users.findOne(
-        where.id(userId).eq('password_hash', oldPasswordHash)
+        where.id(objId).eq('password_hash', oldPasswordHash)
       );
       
       if (user == null) {
@@ -77,7 +99,7 @@ class ProfileController {
 
       // 3. Update field password_hash dengan hash baru
       await MongoService.users.update(
-        where.id(userId),
+        where.id(objId),
         modify.set('password_hash', newPasswordHash).set('updated_at', DateTime.now())
       );
       
@@ -91,13 +113,20 @@ class ProfileController {
 
   static Future<bool> createOrUpdateProfile(Map<String, dynamic> data) async {
     try {
-      final userId = data['user_id'] as ObjectId;
+      final dynamic rawUserId = data['user_id'];
+      final ObjectId? objId = rawUserId is ObjectId ? rawUserId : _tryParseObjectId(rawUserId);
+      if (objId == null) return false;
+      
+      // Ensure data has the correct ObjectId for user_id before saving
+      data['user_id'] = objId;
+
+      final String idString = objId.toHexString();
       final hasConnection = await connectivityService.checkConnection();
       
       if (!hasConnection) {
         print('📱 Profile update: Offline. Queueing sync.');
         // Update local cache agar UI langsung berubah
-        await OfflineService.cacheUserProfile(userId.toHexString(), data);
+        await OfflineService.cacheUserProfile(idString, data);
         await OfflineService.addToSyncQueue('update_profile', data);
         return true;
       }
@@ -108,14 +137,14 @@ class ProfileController {
       final isLive = await MongoService.verifyConnected();
       if (!isLive) {
         print('⚠️ Profile update: DB not live. Queueing sync.');
-        await OfflineService.cacheUserProfile(userId.toHexString(), data);
+        await OfflineService.cacheUserProfile(idString, data);
         await OfflineService.addToSyncQueue('update_profile', data);
         return true;
       }
       
-      if (await profileExists(userId)) {
+      if (await profileExists(objId)) {
         data['updated_at'] = DateTime.now();
-        await MongoService.userDetails.update(where.eq('user_id', userId), { r'$set': data });
+        await MongoService.userDetails.update(where.eq('user_id', objId), { r'$set': data });
       } else {
         data['created_at'] = DateTime.now();
         data['updated_at'] = DateTime.now();
@@ -123,15 +152,16 @@ class ProfileController {
       }
 
       // Update local cache setelah sukses online
-      await OfflineService.cacheUserProfile(userId.toHexString(), data);
+      await OfflineService.cacheUserProfile(idString, data);
       
       return true;
     } catch (e) {
       print('❌ Error createOrUpdateProfile: $e');
       // Fallback: cache dan queue untuk sync nanti
       try {
-        final userId = data['user_id'] as ObjectId;
-        await OfflineService.cacheUserProfile(userId.toHexString(), data);
+        final dynamic rawUserId = data['user_id'];
+        final String idString = rawUserId is ObjectId ? rawUserId.toHexString() : rawUserId.toString();
+        await OfflineService.cacheUserProfile(idString, data);
         await OfflineService.addToSyncQueue('update_profile', data);
         return true;
       } catch (fallbackError) {
