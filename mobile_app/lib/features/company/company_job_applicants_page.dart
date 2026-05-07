@@ -36,6 +36,7 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
   final TextEditingController _searchController = TextEditingController();
 
   List<Map<String, dynamic>> applicants = [];
+  final Map<String, String> _applicantPhotoCache = {};
   bool isLoading = true;
   String selectedFilter = 'Semua';
   String searchQuery = '';
@@ -53,19 +54,40 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
   }
 
   Future<void> _loadApplicants() async {
-    setState(() => isLoading = true);
+    _rememberApplicantPhotos(applicants);
 
-    final jobId = MongoService.getMongoId(widget.job['_id']);
-    final rawApplicants = await MongoService.getApplicantsByJob(jobId: jobId);
-    final enrichedApplicants =
-        await MongoService.enrichApplicantsWithUserDetails(rawApplicants);
+    if (mounted) {
+      setState(() => isLoading = true);
+    }
 
-    if (!mounted) return;
+    try {
+      final jobId = MongoService.getMongoId(widget.job['_id']);
+      final rawApplicants = await MongoService.getApplicantsByJob(jobId: jobId);
+      final enrichedApplicants =
+          await MongoService.enrichApplicantsWithUserDetails(rawApplicants);
 
-    setState(() {
-      applicants = enrichedApplicants;
-      isLoading = false;
-    });
+      final nextApplicants = _mergeApplicantsWithCachedPhotos(
+        enrichedApplicants.isEmpty && applicants.isNotEmpty
+            ? applicants
+            : enrichedApplicants,
+      );
+
+      _rememberApplicantPhotos(nextApplicants);
+
+      if (!mounted) return;
+
+      setState(() {
+        applicants = nextApplicants;
+        isLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+
+      setState(() {
+        applicants = _mergeApplicantsWithCachedPhotos(applicants);
+        isLoading = false;
+      });
+    }
   }
 
   String _cleanBase64Image(String value) {
@@ -84,6 +106,116 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
     return value.startsWith('/data/') ||
         value.startsWith('/storage/') ||
         value.startsWith('/sdcard/');
+  }
+
+  Map<String, dynamic>? _mapOrNull(dynamic value) {
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) return Map<String, dynamic>.from(value);
+
+    return null;
+  }
+
+  String? _cacheKeyFromValue(dynamic value) {
+    if (value == null) return null;
+
+    final text = MongoService.getMongoId(value).trim();
+
+    if (text.isEmpty || text == 'null') return null;
+
+    return text;
+  }
+
+  List<String> _getApplicantPhotoCacheKeys(Map<String, dynamic> applicant) {
+    final keys = <String>{};
+    final user = _mapOrNull(applicant['user']);
+    final profile = _mapOrNull(applicant['profile']);
+    final jobSeeker = _mapOrNull(applicant['job_seeker']);
+
+    void addKey(String prefix, dynamic value) {
+      final key = _cacheKeyFromValue(value);
+      if (key != null) keys.add('$prefix:$key');
+    }
+
+    addKey('application', applicant['_id']);
+    addKey('application', applicant['application_id']);
+    addKey('user', applicant['user_id']);
+    addKey('user', applicant['applicant_id']);
+    addKey('user', applicant['job_seeker_id']);
+    addKey('profile', applicant['profile_id']);
+    addKey('user', user?['_id']);
+    addKey('user', user?['id']);
+    addKey('profile', profile?['_id']);
+    addKey('profile', profile?['id']);
+    addKey('user', jobSeeker?['_id']);
+    addKey('user', jobSeeker?['id']);
+    addKey('email', applicant['email']);
+    addKey('name', applicant['full_name']);
+
+    return keys.toList(growable: false);
+  }
+
+  String _getApplicantProfilePhoto(Map<String, dynamic> applicant) {
+    final user = _mapOrNull(applicant['user']);
+    final profile = _mapOrNull(applicant['profile']);
+    final jobSeeker = _mapOrNull(applicant['job_seeker']);
+
+    final value = applicant['profile_photo'] ??
+        applicant['profilePhoto'] ??
+        applicant['photo'] ??
+        applicant['avatar'] ??
+        user?['profile_photo'] ??
+        user?['profilePhoto'] ??
+        user?['photo'] ??
+        user?['avatar'] ??
+        profile?['profile_photo'] ??
+        profile?['profilePhoto'] ??
+        profile?['photo'] ??
+        profile?['avatar'] ??
+        jobSeeker?['profile_photo'] ??
+        jobSeeker?['profilePhoto'] ??
+        jobSeeker?['photo'] ??
+        jobSeeker?['avatar'];
+
+    return value?.toString() ?? '';
+  }
+
+  void _rememberApplicantPhotos(List<Map<String, dynamic>> source) {
+    for (final applicant in source) {
+      final photo = _getApplicantProfilePhoto(applicant).trim();
+      if (photo.isEmpty) continue;
+
+      for (final key in _getApplicantPhotoCacheKeys(applicant)) {
+        _applicantPhotoCache[key] = photo;
+      }
+    }
+  }
+
+  String _getCachedApplicantPhoto(Map<String, dynamic> applicant) {
+    for (final key in _getApplicantPhotoCacheKeys(applicant)) {
+      final cachedPhoto = _applicantPhotoCache[key]?.trim() ?? '';
+      if (cachedPhoto.isNotEmpty) return cachedPhoto;
+    }
+
+    return '';
+  }
+
+  List<Map<String, dynamic>> _mergeApplicantsWithCachedPhotos(
+    List<Map<String, dynamic>> source,
+  ) {
+    return source.map((applicant) {
+      final mergedApplicant = Map<String, dynamic>.from(applicant);
+      final currentPhoto = _getApplicantProfilePhoto(mergedApplicant).trim();
+
+      if (currentPhoto.isEmpty) {
+        final cachedPhoto = _getCachedApplicantPhoto(mergedApplicant);
+
+        if (cachedPhoto.isNotEmpty) {
+          mergedApplicant['profile_photo'] = cachedPhoto;
+        }
+      }
+
+      return mergedApplicant;
+    }).toList(growable: false);
   }
 
   String _normalizeStatus(String status) {
@@ -548,7 +680,11 @@ class _CompanyJobApplicantsPageState extends State<CompanyJobApplicantsPage> {
     final email = applicant['email']?.toString() ?? '-';
     final phone = applicant['phone']?.toString() ?? '-';
     final status = applicant['status']?.toString() ?? 'dikirim';
-    final profilePhoto = applicant['profile_photo']?.toString() ?? '';
+    final currentProfilePhoto = _getApplicantProfilePhoto(applicant).trim();
+    final cachedProfilePhoto = _getCachedApplicantPhoto(applicant);
+    final profilePhoto = currentProfilePhoto.isNotEmpty
+        ? currentProfilePhoto
+        : cachedProfilePhoto;
 
     debugPrint(
       'DEBUG FOTO $name: '
