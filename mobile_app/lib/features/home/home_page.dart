@@ -1075,7 +1075,7 @@ class _JobCard extends StatelessWidget {
               Icon(Icons.work, color: subTextColor, size: 16),
               const SizedBox(width: 4),
               Text(
-                job['employment_type'] ?? 'Tipe tidak diketahui',
+                job['job_type'] ?? 'Tipe tidak diketahui',
                 style: TextStyle(color: subTextColor),
               ),
             ],
