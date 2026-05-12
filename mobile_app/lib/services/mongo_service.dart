@@ -760,44 +760,53 @@ class MongoService {
     required Map<String, dynamic> applicationData,
   }) async {
     try {
-      // ✅ STEP 1: Cache application lokal SEGERA JADI UI LANGSUNG UPDATED
       final userId = applicationData['user_id'];
+
+      // STEP 1: Cache application lokal agar UI langsung update
       if (userId != null) {
-        final uidStr = (userId is ObjectId) ? userId.toHexString() : userId.toString();
         final cachedApps = OfflineService.getCachedApplications();
-        // Masukkan data dengan timestamp agar terlihat baru
+
         final appToCache = Map<String, dynamic>.from(applicationData);
         appToCache['created_at'] = DateTime.now().toUtc();
-        appToCache['_id'] = ObjectId(); // Generate temporary ID
+        appToCache['_id'] = ObjectId(); // Temporary local ID
+
         cachedApps.insert(0, appToCache);
         await OfflineService.cacheApplications(cachedApps);
+
         print('✅ Application cached locally immediately');
       }
 
-      // ✅ STEP 2: Check koneksi internet
+      // STEP 2: Kalau offline, masukkan ke sync queue
       final hasConnection = await connectivityService.checkConnection();
+
       if (!hasConnection) {
         print('📱 Offline: Application queued for sync');
+
         final dataToQueue = _sanitizeMapForSync(applicationData);
         await OfflineService.addToSyncQueue('apply_job', dataToQueue);
-        return true; // UI sudah updated dari cache, safe return true
+
+        return true;
       }
 
-      // ✅ STEP 3: Ensure connected (tapi dengan truly verify)
+      // STEP 3: Pastikan MongoDB tersambung
       await ensureConnected();
-      
-      // ✅ STEP 4: Truly verify koneksi sebelum proceed
+
+      // STEP 4: Verifikasi koneksi MongoDB benar-benar hidup
       final isLive = await verifyConnected();
+
       if (!isLive) {
-        print('⚠️ DB state.open tapi tidak bisa reach. Queueing for sync.');
+        print('⚠️ DB not live. Application queued for sync.');
+
         final dataToQueue = _sanitizeMapForSync(applicationData);
         await OfflineService.addToSyncQueue('apply_job', dataToQueue);
-        return true; // Cache sudah ada, return true
+
+        return true;
       }
 
       final jobId = applicationData['job_id'];
-      if (jobId == null) {
-        print('DEBUG: jobId is null');
+
+      if (userId == null || jobId == null) {
+        print('❌ submitJobApplication: user_id atau job_id null');
         return false;
       }
 
@@ -811,12 +820,21 @@ class MongoService {
 
       if (alreadyApplied) {
         print('DEBUG: User already applied to this job');
-        return false;
+
+        // Dianggap sukses supaya item sync tidak nyangkut terus di queue
+        return true;
       }
 
       final finalAppData = Map<String, dynamic>.from(applicationData);
+
+      // Jangan kirim _id temporary dari Hive ke MongoDB
+      finalAppData.remove('_id');
+
       finalAppData['user_id'] = uId;
       finalAppData['job_id'] = jId;
+      finalAppData['created_at'] =
+          finalAppData['created_at'] ?? DateTime.now().toUtc();
+      finalAppData['status'] = finalAppData['status'] ?? 'pending';
 
       final result = await _jobApplicationsCollection.insertOne(finalAppData);
       final insertedId = result.id;
@@ -850,6 +868,7 @@ class MongoService {
               message: message,
               type: 'new_application',
             );
+
             print('✅ Notification to company created');
           }
         }
@@ -860,8 +879,11 @@ class MongoService {
       return true;
     } catch (e) {
       print('❌ submitJobApplication error: $e');
-      // Cache sudah diupdate di step 1, jadi return true
-      return true;
+
+      // Penting untuk sync offline:
+      // return false agar SyncService tahu item gagal
+      // dan tidak menghapusnya dari pending_sync queue.
+      return false;
     }
   }
 
