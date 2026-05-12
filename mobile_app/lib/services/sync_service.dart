@@ -57,7 +57,47 @@ class SyncService {
       ),
     );
 
-    performSync();
+    Future.delayed(const Duration(seconds: 5), performSync);
+  }
+
+  static Future<bool> _prepareMongoConnection() async {
+    final hasConnection = await connectivityService.checkConnection();
+    if (!hasConnection) {
+      print('📴 Sync cancelled: no internet connection.');
+      return false;
+    }
+
+    final stableInternet = await MongoService.hasStableInternet(retries: 8);
+    if (!stableInternet) {
+      print('📴 Sync cancelled: internet/DNS is not stable yet. Queue kept.');
+      return false;
+    }
+
+    bool isLive = await MongoService.ensureConnected();
+    if (isLive) return true;
+
+    for (int i = 0; i < 10; i++) {
+      await Future.delayed(const Duration(seconds: 1));
+
+      isLive = await MongoService.ensureConnected();
+      if (isLive) return true;
+
+      print('⏳ Ensure/verify attempt ${i + 1}/10 failed. Retrying...');
+    }
+
+    print('🔁 Verify failed after retries. Forcing MongoDB reconnect...');
+    await MongoService.forceReconnect();
+
+    for (int i = 0; i < 5; i++) {
+      await Future.delayed(const Duration(seconds: 1));
+
+      isLive = await MongoService.verifyConnected();
+      if (isLive) return true;
+
+      print('⏳ Post-reconnect verify attempt ${i + 1}/5 failed. Retrying...');
+    }
+
+    return false;
   }
 
   static Future<void> performSync() async {
@@ -76,31 +116,11 @@ class SyncService {
     final failedItems = <Map<String, dynamic>>[];
 
     try {
-      print('⏳ Waiting for MongoService to be ready...');
-      await MongoService.ensureConnected();
+      print('⏳ Preparing MongoService live connection...');
+      final mongoReady = await _prepareMongoConnection();
 
-      print('🔍 Verifying MongoService connection is LIVE...');
-
-      int verifyRetries = 0;
-      bool isLive = false;
-
-      while (!isLive && verifyRetries < 10) {
-        isLive = await MongoService.verifyConnected();
-
-        if (!isLive && verifyRetries < 9) {
-          print(
-            '⏳ Verify attempt ${verifyRetries + 1}/10 failed. Retrying...',
-          );
-          await Future.delayed(const Duration(milliseconds: 500));
-        }
-
-        verifyRetries++;
-      }
-
-      if (!isLive) {
-        print(
-          '❌ FATAL: MongoService connection cannot be verified. Sync cancelled.',
-        );
+      if (!mongoReady) {
+        print('❌ MongoDB not live. Sync cancelled. Queue kept.');
         return;
       }
 
@@ -165,9 +185,7 @@ class SyncService {
     required Map<String, dynamic> data,
   }) async {
     if (action == 'apply_job') {
-      return await MongoService.submitJobApplication(
-        applicationData: data,
-      );
+      return await MongoService.submitJobApplicationOnlineOnly(data);
     }
 
     if (action == 'update_profile') {

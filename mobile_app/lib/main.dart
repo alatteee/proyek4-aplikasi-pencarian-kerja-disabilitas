@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/constants/app_colors.dart';
@@ -10,11 +12,42 @@ import 'services/sync_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await dotenv.load(fileName: ".env");
-  await OfflineService.init();
-  await MongoService.connect();
+  FlutterError.onError = (FlutterErrorDetails details) {
+    final errorText = details.exceptionAsString();
 
-  runApp(const JobAbleApp());
+    if (_isIgnoredMongoSocketError(errorText)) {
+      print('⚠️ Ignored Mongo socket disconnect: $errorText');
+      return;
+    }
+
+    FlutterError.presentError(details);
+  };
+
+  runZonedGuarded(() async {
+    await dotenv.load(fileName: ".env");
+    await OfflineService.init();
+    await MongoService.connect();
+
+    runApp(const JobAbleApp());
+  }, (error, stack) {
+    final errorText = error.toString();
+
+    if (_isIgnoredMongoSocketError(errorText)) {
+      print('⚠️ Ignored async Mongo disconnect: $errorText');
+      return;
+    }
+
+    print('❌ Unhandled error: $error');
+    print(stack);
+  });
+}
+
+bool _isIgnoredMongoSocketError(String errorText) {
+  return errorText.contains('Software caused connection abort') ||
+      errorText.contains('No master connection') ||
+      errorText.contains('connection closed') ||
+      errorText.contains('MongoDB ConnectionException') ||
+      errorText.contains('SocketException');
 }
 
 class JobAbleApp extends StatefulWidget {
@@ -42,7 +75,6 @@ class _JobAbleAppState extends State<JobAbleApp> {
               title: 'JobAble',
               debugShowCheckedModeBanner: false,
               builder: (context, child) {
-                // Inisialisasi SyncService di sini agar ScaffoldMessenger tersedia
                 SyncService.initialize(context);
 
                 Widget app = MediaQuery(
