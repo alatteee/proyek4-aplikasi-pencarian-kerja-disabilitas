@@ -1526,34 +1526,58 @@ class MongoService {
     try {
       // Periksa koneksi internet sebelum mencoba ke MongoDB
       final hasConnection = await connectivityService.checkConnection();
-      if (!hasConnection) {
-        print('DEBUG: Offline mode detected, fetching from Hive cache');
-        return OfflineService.getCachedJobs();
-      }
-
-      await ensureConnected();
-
-      // Proteksi tambahan: jika DB masih tidak siap, gunakan cache
-      if (MongoService.db.state != State.open) {
-        print('⚠️ DB not ready after ensureConnected. Using cache for jobs.');
-        return OfflineService.getCachedJobs();
-      }
-
-      final jobs = await _jobVacanciesCollection
-          .find(
-            where.eq('status', 'active').sortBy(
-                  'created_at',
-                  descending: true,
-                ),
-          )
-          .toList();
-
-      final castedJobs = jobs.cast<Map<String, dynamic>>();
       
-      // Update cache Hive di background
-      OfflineService.cacheJobs(castedJobs);
+      // Jika ada koneksi, ALWAYS prioritize MongoDB fetch (jangan langsung pakai cache)
+      if (hasConnection) {
+        print('🌐 Has internet connection, attempting MongoDB fetch...');
+        
+        try {
+          await ensureConnected();
 
-      return castedJobs;
+          // Proteksi tambahan: jika DB masih tidak siap, gunakan cache
+          if (MongoService.db.state != State.open) {
+            print('⚠️ DB not ready after ensureConnected. Using cache for jobs.');
+            return OfflineService.getCachedJobs();
+          }
+
+          final jobs = await _jobVacanciesCollection
+              .find(
+                where.eq('status', 'active').sortBy(
+                      'created_at',
+                      descending: true,
+                    ),
+              )
+              .toList();
+
+          final castedJobs = jobs.cast<Map<String, dynamic>>();
+          
+          // DEBUG: Log apakah job_photo ada di data
+          if (castedJobs.isNotEmpty) {
+            final firstJob = castedJobs.first;
+            print('📋 DEBUG: First job has job_photo: ${firstJob.containsKey('job_photo')}');
+            if (firstJob.containsKey('job_photo')) {
+              final photoValue = firstJob['job_photo'];
+              print('📋 DEBUG: job_photo is null: ${photoValue == null}, isEmpty: ${photoValue.toString().isEmpty}');
+              print('📋 DEBUG: job_photo field size: ${photoValue?.toString().length ?? 0} bytes');
+            }
+            print('✅ Fetched ${castedJobs.length} jobs from MongoDB with job_photo field');
+          }
+          
+          // Update cache Hive di background dengan data fresh
+          print('💾 Updating cache with fresh data from MongoDB...');
+          OfflineService.cacheJobs(castedJobs);
+
+          return castedJobs;
+        } catch (mongoError) {
+          print('❌ MongoDB fetch error: $mongoError');
+          print('⚠️ Falling back to cache...');
+          return OfflineService.getCachedJobs();
+        }
+      } else {
+        print('📴 Offline mode detected, fetching from Hive cache');
+        OfflineService.debugCachedJobsCount();
+        return OfflineService.getCachedJobs();
+      }
     } catch (e) {
       print('❌ Gagal mengambil lowongan terpublikasi: $e');
       // Jika gagal konek ke Mongo tapi ada internet, coba ambil dari cache sebagai fallback
