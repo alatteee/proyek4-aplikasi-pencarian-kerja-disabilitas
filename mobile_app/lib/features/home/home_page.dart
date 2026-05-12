@@ -7,6 +7,7 @@ import '../job_detail/job_detail_page.dart';
 import '../applications/applications_page.dart';
 import '../profile/profile_view.dart';
 import '../profile/accessibility_settings_view.dart';
+import '../profile/profile_controller.dart';
 
 import '../notifications/notification_page.dart';
 import '../cv/cv_view.dart';
@@ -35,7 +36,10 @@ class _HomePageState extends State<HomePage> {
   Set<String> savedJobIds = {};
 
   bool isLoading = true;
+  bool isLoadingProfileName = true;
   bool _isOpeningNotificationPage = false;
+
+  String? namaLengkap;
 
   String selectedCategory = 'Semua';
   String searchQuery = '';
@@ -54,6 +58,7 @@ class _HomePageState extends State<HomePage> {
       });
     }
 
+    fetchProfileName();
     fetchJobs();
   }
 
@@ -69,6 +74,56 @@ class _HomePageState extends State<HomePage> {
         widget.userData['user_id']?.toString() ??
         widget.userData['email']?.toString() ??
         '';
+  }
+
+  String? _textOrNull(dynamic value) {
+    final text = value?.toString().trim();
+
+    if (text == null || text.isEmpty) return null;
+
+    return text;
+  }
+
+  String _getDisplayName() {
+    return _textOrNull(namaLengkap) ??
+        _textOrNull(widget.userData['nama_lengkap']) ??
+        _textOrNull(widget.userData['full_name']) ??
+        _textOrNull(widget.userData['username']) ??
+        'User';
+  }
+
+  Future<void> fetchProfileName() async {
+    final userId = widget.userData['_id'] ??
+        widget.userData['id'] ??
+        widget.userData['user_id'];
+
+    if (userId == null) {
+      if (!mounted) return;
+
+      setState(() {
+        isLoadingProfileName = false;
+      });
+
+      return;
+    }
+
+    try {
+      final profile = await ProfileController.getProfileByUserId(userId);
+
+      if (!mounted) return;
+
+      setState(() {
+        namaLengkap = _textOrNull(profile?['nama_lengkap']) ??
+            _textOrNull(profile?['full_name']);
+        isLoadingProfileName = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+
+      setState(() {
+        isLoadingProfileName = false;
+      });
+    }
   }
 
   String _jobIdOf(Map<String, dynamic> job) {
@@ -613,7 +668,9 @@ class _HomePageState extends State<HomePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Halo, ${widget.userData['username'] ?? 'User'}. ${_getGreeting()}!',
+              isLoadingProfileName
+                  ? 'Halo. ${_getGreeting()}!'
+                  : 'Halo, ${_getDisplayName()}. ${_getGreeting()}!',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
