@@ -8,6 +8,7 @@ import '../applications/applications_page.dart';
 import '../profile/profile_view.dart';
 import '../profile/accessibility_settings_view.dart';
 import '../profile/profile_controller.dart';
+import '../../services/stress_test_service.dart';
 
 import '../notifications/notification_page.dart';
 import '../cv/cv_view.dart';
@@ -168,6 +169,13 @@ class _HomePageState extends State<HomePage> {
     // Hapus cache lama
     print('🗑️ Clearing cache to force fresh fetch from MongoDB...');
     await OfflineService.clearJobsCache();
+
+    // Reset status kategori ke 'Semua' agar data dummy terlihat
+    if (mounted) {
+      setState(() {
+        selectedCategory = 'Semua';
+      });
+    }
 
     // Fetch ulang dari MongoDB
     await fetchJobs();
@@ -764,7 +772,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                       Switch(
                         value: isHighContrast,
-                        activeColor: Colors.yellow,
+                        activeThumbColor: Colors.yellow,
                         activeTrackColor: Colors.grey.shade800,
                         onChanged: (value) {
                           AccessibilityController.setHighContrast(value);

@@ -11,6 +11,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'accessibility_settings_view.dart';
 import '../../services/offline_service.dart';
+import '../../services/stress_test_service.dart';
 
 class ProfileView extends StatefulWidget {
   final Map<String, dynamic> currentUser;
@@ -318,6 +319,65 @@ class _ProfileViewState extends State<ProfileView> {
                 );
               },
             ),
+
+            const Divider(),
+            _buildMenuCard(
+              icon: Icons.speed,
+              label: 'Stress Test (20 Jobs)',
+              onTap: () async {
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (context) => const Center(child: CircularProgressIndicator()),
+                );
+                final result = await StressTestService.seedJobs(20);
+                if (context.mounted) {
+                  Navigator.pop(context); // Close loading
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Berhasil tambah ${result['success_count']} lowongan dummy!')),
+                  );
+                }
+              },
+            ),
+
+            _buildMenuCard(
+              icon: Icons.person_add_alt_1,
+              label: 'Stress Test (20 Users)',
+              onTap: () async {
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (context) => const Center(child: CircularProgressIndicator()),
+                );
+                final result = await StressTestService.seedUsers(20);
+                if (context.mounted) {
+                  Navigator.pop(context); // Close loading
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Berhasil tambah ${result['success_count']} akun & profil dummy!')),
+                  );
+                }
+              },
+            ),
+
+            _buildMenuCard(
+              icon: Icons.delete_sweep,
+              label: 'Bersihkan SEMUA Data Test',
+              onTap: () async {
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (context) => const Center(child: CircularProgressIndicator()),
+                );
+                await StressTestService.cleanStressTestData();
+                if (context.mounted) {
+                  Navigator.pop(context); // Close loading
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Semua data dummy berhasil dibersihkan!')),
+                  );
+                }
+              },
+            ),
+            const Divider(),
 
             _buildMenuCard(
               icon: Icons.logout,
