@@ -41,28 +41,109 @@ class _JobDetailPageState extends State<JobDetailPage> {
     });
   }
 
+  String _textValue(dynamic value, String fallback) {
+    final text = value?.toString().trim();
+    if (text == null || text.isEmpty) return fallback;
+    return text;
+  }
+
+  String _getJobTitle() {
+    return _textValue(
+      widget.job['title'] ?? widget.job['job_title'],
+      '-',
+    );
+  }
+
+  String _getJobType() {
+    return _textValue(
+      widget.job['job_type'] ?? widget.job['type'],
+      '-',
+    );
+  }
+
+  Widget _buildJobPhoto({
+    required BuildContext context,
+    required dynamic photo,
+    required bool isDark,
+  }) {
+    final theme = Theme.of(context);
+    final photoText = photo?.toString().trim() ?? '';
+
+    Widget placeholder() {
+      return Container(
+        height: 56,
+        width: 56,
+        decoration: BoxDecoration(
+          color: isDark
+              ? Colors.yellow.withOpacity(0.1)
+              : AppColors.primaryNavy.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Icon(
+          Icons.business_center_rounded,
+          color: theme.colorScheme.primary,
+          size: 36,
+        ),
+      );
+    }
+
+    if (photoText.isEmpty) {
+      return placeholder();
+    }
+
+    if (photoText.startsWith('http://') || photoText.startsWith('https://')) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Image.network(
+          photoText,
+          height: 56,
+          width: 56,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => placeholder(),
+        ),
+      );
+    }
+
+    try {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Image.memory(
+          base64Decode(photoText),
+          height: 56,
+          width: 56,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => placeholder(),
+        ),
+      );
+    } catch (e) {
+      return placeholder();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final String title = widget.job['title'] ?? '-';
-    final String company = widget.job['company_name'] ?? '-';
-    final String location = widget.job['location'] ?? '-';
-    final String jobType = widget.job['job_type'] ?? '-';
-    final String description =
-        widget.job['description'] ?? 'Tidak ada deskripsi.';
-    final String? jobPhoto = widget.job['job_photo'];
+    final String title = _getJobTitle();
+    final String company = _textValue(widget.job['company_name'], '-');
+    final String location = _textValue(widget.job['location'], '-');
+    final String jobType = _getJobType();
+    final String description = _textValue(
+      widget.job['description'],
+      'Tidak ada deskripsi.',
+    );
+    final dynamic jobPhoto = widget.job['job_photo'];
 
     final List qualifications = (widget.job['qualification'] is List)
         ? widget.job['qualification']
         : (widget.job['qualification'] is String &&
-                widget.job['qualification'].isNotEmpty)
-            ? widget.job['qualification'].split('\n')
+                widget.job['qualification'].toString().isNotEmpty)
+            ? widget.job['qualification'].toString().split('\n')
             : [];
 
     final List facilities = (widget.job['facilities'] is List)
         ? widget.job['facilities']
         : (widget.job['facilities'] is String &&
-                widget.job['facilities'].isNotEmpty)
-            ? widget.job['facilities'].split(',')
+                widget.job['facilities'].toString().isNotEmpty)
+            ? widget.job['facilities'].toString().split(',')
             : [];
 
     IconData getFacilityIcon(String name) {
@@ -77,31 +158,14 @@ class _JobDetailPageState extends State<JobDetailPage> {
     Widget jobHeader() {
       final theme = Theme.of(context);
       final isDark = theme.brightness == Brightness.dark;
+
       return Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            height: 56,
-            width: 56,
-            decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.yellow.withOpacity(0.1)
-                  : AppColors.primaryNavy.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(16),
-              image: jobPhoto != null
-                  ? DecorationImage(
-                      image: MemoryImage(base64Decode(jobPhoto)),
-                      fit: BoxFit.cover,
-                    )
-                  : null,
-            ),
-            child: jobPhoto == null
-                ? Icon(
-                    Icons.business_center_rounded,
-                    color: theme.colorScheme.primary,
-                    size: 36,
-                  )
-                : null,
+          _buildJobPhoto(
+            context: context,
+            photo: jobPhoto,
+            isDark: isDark,
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -133,11 +197,15 @@ class _JobDetailPageState extends State<JobDetailPage> {
                       color: isDark ? Colors.yellow : AppColors.textGray,
                     ),
                     const SizedBox(width: 4),
-                    Text(
-                      location,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: isDark ? Colors.yellow : AppColors.textGray,
+                    Expanded(
+                      child: Text(
+                        location,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isDark ? Colors.yellow : AppColors.textGray,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -147,11 +215,15 @@ class _JobDetailPageState extends State<JobDetailPage> {
                       color: isDark ? Colors.yellow : AppColors.textGray,
                     ),
                     const SizedBox(width: 4),
-                    Text(
-                      jobType,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: isDark ? Colors.yellow : AppColors.textGray,
+                    Expanded(
+                      child: Text(
+                        jobType,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isDark ? Colors.yellow : AppColors.textGray,
+                        ),
                       ),
                     ),
                   ],
@@ -230,7 +302,8 @@ class _JobDetailPageState extends State<JobDetailPage> {
                       Text(
                         'Tidak ada kualifikasi.',
                         style: TextStyle(
-                          color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
+                          color:
+                              theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
                           fontSize: 14,
                         ),
                       )
@@ -277,7 +350,8 @@ class _JobDetailPageState extends State<JobDetailPage> {
                       Text(
                         'Tidak ada fasilitas.',
                         style: TextStyle(
-                          color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
+                          color:
+                              theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
                           fontSize: 14,
                         ),
                       )
@@ -293,9 +367,14 @@ class _JobDetailPageState extends State<JobDetailPage> {
                                   vertical: 10,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: theme.colorScheme.primary.withOpacity(0.12),
+                                  color:
+                                      theme.colorScheme.primary.withOpacity(0.12),
                                   borderRadius: BorderRadius.circular(12),
-                                  border: isDark ? Border.all(color: Colors.yellow.withOpacity(0.3)) : null,
+                                  border: isDark
+                                      ? Border.all(
+                                          color: Colors.yellow.withOpacity(0.3),
+                                        )
+                                      : null,
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
