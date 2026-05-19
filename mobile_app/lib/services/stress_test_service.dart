@@ -225,6 +225,93 @@ class StressTestService {
     };
   }
 
+  /// Skenario 3: Menambahkan [count] jumlah aplikasi lamaran dari user berbeda ke 1 lowongan yang sama.
+  static Future<Map<String, dynamic>> seedApplications({
+    required int count,
+    required String jobId,
+  }) async {
+    final startTime = DateTime.now();
+    int successCount = 0;
+    final List<String> errors = [];
+
+    print('📋 Memulai Seeding $count Aplikasi Lamaran ke Job: $jobId...');
+
+    try {
+      final isConnected = await MongoService.ensureConnected();
+
+      if (!isConnected) {
+        final message = 'MongoDB tidak tersambung. Seeding applications dibatalkan.';
+        print('❌ $message');
+        return {
+          'total_requested': count,
+          'success_count': successCount,
+          'duration_ms': DateTime.now().difference(startTime).inMilliseconds,
+          'errors': [message],
+        };
+      }
+
+      final applicationsCollection = MongoService.db.collection('job_applications');
+      final usersCollection = MongoService.db.collection('users');
+
+      // Ambil user-user dummy yang sudah dibuat sebelumnya
+      final dummyUsers = await usersCollection
+          .find(where.eq('is_stress_test_data', true))
+          .toList()
+          .then((list) => list.take(count).toList());
+
+      if (dummyUsers.isEmpty) {
+        final message = 'Tidak ada user dummy. Jalankan Stress Test (20 Users) terlebih dahulu.';
+        print('⚠️ $message');
+        return {
+          'total_requested': count,
+          'success_count': 0,
+          'duration_ms': DateTime.now().difference(startTime).inMilliseconds,
+          'errors': [message],
+        };
+      }
+
+      // Setiap user dummy submit aplikasi ke job yang sama
+      for (var i = 0; i < dummyUsers.length; i++) {
+        final userId = dummyUsers[i]['_id'];
+        final userName = dummyUsers[i]['username'] ?? 'User $i';
+
+        final dummyApplication = {
+          '_id': ObjectId(),
+          'job_id': jobId,
+          'user_id': userId,
+          'status': 'pending',
+          'applied_at': DateTime.now().toUtc(),
+          'updated_at': DateTime.now().toUtc(),
+          'cv_attachment': 'https://example.com/cv/$userId.pdf',
+          'cover_letter': _faker.lorem.sentences(5).join(' '),
+          'is_stress_test_data': true,
+        };
+
+        try {
+          await applicationsCollection.insert(dummyApplication);
+          successCount++;
+          print('✅ Progress aplikasi: $successCount/${dummyUsers.length} dari $userName');
+        } catch (error) {
+          final errorMsg = 'Gagal aplikasi user ke-$i: $error';
+          print('❌ $errorMsg');
+          errors.add(errorMsg);
+        }
+      }
+    } catch (e) {
+      print('❌ Error fatal saat seeding applications: $e');
+      errors.add(e.toString());
+    }
+
+    final duration = DateTime.now().difference(startTime);
+
+    return {
+      'total_requested': count,
+      'success_count': successCount,
+      'duration_ms': duration.inMilliseconds,
+      'errors': errors,
+    };
+  }
+
   /// Membersihkan SEMUA data hasil stress test dari berbagai collection.
   ///
   /// `jobs` tetap ikut dibersihkan karena sebelumnya data dummy sempat masuk ke sana.
@@ -242,6 +329,7 @@ class StressTestService {
         'jobs',
         'users',
         'user_details',
+        'job_applications',
       ];
 
       for (final collName in collections) {

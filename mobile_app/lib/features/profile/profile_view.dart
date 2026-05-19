@@ -360,6 +360,54 @@ class _ProfileViewState extends State<ProfileView> {
             ),
 
             _buildMenuCard(
+              icon: Icons.assignment_ind,
+              label: 'Stress Test (20 Pelamar)',
+              onTap: () async {
+                // Dialog input Job ID
+                final jobIdController = TextEditingController();
+                await showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Input Job ID'),
+                    content: TextField(
+                      controller: jobIdController,
+                      decoration: const InputDecoration(
+                        hintText: 'Paste Job ID dari Beranda',
+                        border: OutlineInputBorder(),
+                      ),
+                      maxLines: 2,
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Batal'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, jobIdController.text.trim()),
+                        child: const Text('Lanjut'),
+                      ),
+                    ],
+                  ),
+                ).then((jobId) async {
+                  if (jobId != null && jobId.isNotEmpty) {
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (context) => const Center(child: CircularProgressIndicator()),
+                    );
+                    final result = await StressTestService.seedApplications(count: 20, jobId: jobId);
+                    if (context.mounted) {
+                      Navigator.pop(context); // Close loading
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Berhasil tambah ${result['success_count']} aplikasi dummy!')),
+                      );
+                    }
+                  }
+                });
+              },
+            ),
+
+            _buildMenuCard(
               icon: Icons.delete_sweep,
               label: 'Bersihkan SEMUA Data Test',
               onTap: () async {

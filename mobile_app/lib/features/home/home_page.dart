@@ -8,7 +8,6 @@ import '../applications/applications_page.dart';
 import '../profile/profile_view.dart';
 import '../profile/accessibility_settings_view.dart';
 import '../profile/profile_controller.dart';
-import '../../services/stress_test_service.dart';
 
 import '../notifications/notification_page.dart';
 import '../cv/cv_view.dart';
