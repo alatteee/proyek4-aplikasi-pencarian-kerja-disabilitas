@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../../core/constants/app_colors.dart';
 import '../auth/login_view.dart';
 import 'profile_detail_view.dart';
@@ -133,6 +134,16 @@ class _ProfileViewState extends State<ProfileView> {
         color: theme.colorScheme.primary,
       );
     }
+  }
+
+  String _formatDuration(dynamic durationMs) {
+    final ms = durationMs is int
+        ? durationMs
+        : int.tryParse(durationMs?.toString() ?? '') ?? 0;
+
+    final seconds = ms / 1000;
+
+    return '${ms}ms (${seconds.toStringAsFixed(2)} detik)';
   }
 
   @override
@@ -320,112 +331,186 @@ class _ProfileViewState extends State<ProfileView> {
               },
             ),
 
-            const Divider(),
-            _buildMenuCard(
-              icon: Icons.speed,
-              label: 'Stress Test (20 Jobs)',
-              onTap: () async {
-                showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (context) => const Center(child: CircularProgressIndicator()),
-                );
-                final result = await StressTestService.seedJobs(20);
-                if (context.mounted) {
-                  Navigator.pop(context); // Close loading
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Berhasil tambah ${result['success_count']} lowongan dummy!')),
-                  );
-                }
-              },
-            ),
+            if (kDebugMode) ...[
+              const Divider(),
 
-            _buildMenuCard(
-              icon: Icons.person_add_alt_1,
-              label: 'Stress Test (20 Users)',
-              onTap: () async {
-                showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (context) => const Center(child: CircularProgressIndicator()),
-                );
-                final result = await StressTestService.seedUsers(20);
-                if (context.mounted) {
-                  Navigator.pop(context); // Close loading
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Berhasil tambah ${result['success_count']} akun & profil dummy!')),
+              _buildMenuCard(
+                icon: Icons.speed,
+                label: 'Stress Test (20 Jobs)',
+                onTap: () async {
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (context) =>
+                        const Center(child: CircularProgressIndicator()),
                   );
-                }
-              },
-            ),
 
-            _buildMenuCard(
-              icon: Icons.assignment_ind,
-              label: 'Stress Test (20 Pelamar)',
-              onTap: () async {
-                // Dialog input Job ID
-                final jobIdController = TextEditingController();
-                await showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Input Job ID'),
-                    content: TextField(
-                      controller: jobIdController,
-                      decoration: const InputDecoration(
-                        hintText: 'Paste Job ID dari Beranda',
-                        border: OutlineInputBorder(),
+                  final result = await StressTestService.seedJobs(20);
+                  final durationText = _formatDuration(result['duration_ms']);
+
+                  print(
+                    '⏱️ ST-01 seedJobs duration: ${result['duration_ms']} ms',
+                  );
+
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Berhasil tambah ${result['success_count']} lowongan dummy! Durasi: $durationText',
+                        ),
                       ),
-                      maxLines: 2,
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Batal'),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, jobIdController.text.trim()),
-                        child: const Text('Lanjut'),
-                      ),
-                    ],
-                  ),
-                ).then((jobId) async {
-                  if (jobId != null && jobId.isNotEmpty) {
-                    showDialog(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (context) => const Center(child: CircularProgressIndicator()),
                     );
-                    final result = await StressTestService.seedApplications(count: 20, jobId: jobId);
-                    if (context.mounted) {
-                      Navigator.pop(context); // Close loading
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Berhasil tambah ${result['success_count']} aplikasi dummy!')),
-                      );
-                    }
                   }
-                });
-              },
-            ),
+                },
+              ),
 
-            _buildMenuCard(
-              icon: Icons.delete_sweep,
-              label: 'Bersihkan SEMUA Data Test',
-              onTap: () async {
-                showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (context) => const Center(child: CircularProgressIndicator()),
-                );
-                await StressTestService.cleanStressTestData();
-                if (context.mounted) {
-                  Navigator.pop(context); // Close loading
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Semua data dummy berhasil dibersihkan!')),
+              _buildMenuCard(
+                icon: Icons.person_add_alt_1,
+                label: 'Stress Test (20 Users)',
+                onTap: () async {
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (context) =>
+                        const Center(child: CircularProgressIndicator()),
                   );
-                }
-              },
-            ),
-            const Divider(),
+
+                  final result = await StressTestService.seedUsers(20);
+                  final durationText = _formatDuration(result['duration_ms']);
+
+                  print(
+                    '⏱️ ST-02 seedUsers duration: ${result['duration_ms']} ms',
+                  );
+
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Berhasil tambah ${result['success_count']} akun & profil dummy! Durasi: $durationText',
+                        ),
+                      ),
+                    );
+                  }
+                },
+              ),
+
+              _buildMenuCard(
+                icon: Icons.assignment_ind,
+                label: 'Stress Test (20 Pelamar)',
+                onTap: () async {
+                  String inputJobId = '';
+
+                  final jobId = await showDialog<String>(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (dialogContext) {
+                      return AlertDialog(
+                        title: const Text('Input Job ID'),
+                        content: TextField(
+                          autofocus: true,
+                          decoration: const InputDecoration(
+                            hintText:
+                                'Paste _id dari job_vacancies, bukan company_id',
+                            border: OutlineInputBorder(),
+                          ),
+                          maxLines: 2,
+                          onChanged: (value) {
+                            inputJobId = value.trim();
+                          },
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.of(dialogContext).pop();
+                            },
+                            child: const Text('Batal'),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.of(dialogContext).pop(inputJobId);
+                            },
+                            child: const Text('Lanjut'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+
+                  if (jobId == null || jobId.isEmpty) return;
+                  if (!context.mounted) return;
+
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (loadingContext) {
+                      return const Center(
+                        child: CircularProgressIndicator(),
+                      );
+                    },
+                  );
+
+                  final result = await StressTestService.seedApplications(
+                    count: 20,
+                    jobId: jobId,
+                  );
+                  final durationText = _formatDuration(result['duration_ms']);
+
+                  print(
+                    '⏱️ ST-03 seedApplications duration: ${result['duration_ms']} ms',
+                  );
+
+                  if (!context.mounted) return;
+
+                  Navigator.of(context, rootNavigator: true).pop();
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Berhasil tambah ${result['success_count']} aplikasi dummy! Durasi: $durationText',
+                      ),
+                    ),
+                  );
+                },
+              ),
+
+              _buildMenuCard(
+                icon: Icons.delete_sweep,
+                label: 'Bersihkan SEMUA Data Test',
+                onTap: () async {
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (context) =>
+                        const Center(child: CircularProgressIndicator()),
+                  );
+
+                  final stopwatch = Stopwatch()..start();
+
+                  await StressTestService.cleanStressTestData();
+
+                  stopwatch.stop();
+
+                  print(
+                    '⏱️ ST-06 cleanup duration: ${stopwatch.elapsedMilliseconds} ms',
+                  );
+
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Semua data dummy berhasil dibersihkan! Durasi: ${_formatDuration(stopwatch.elapsedMilliseconds)}',
+                        ),
+                      ),
+                    );
+                  }
+                },
+              ),
+
+              const Divider(),
+            ],
 
             _buildMenuCard(
               icon: Icons.logout,
