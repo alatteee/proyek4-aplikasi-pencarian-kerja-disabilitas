@@ -188,6 +188,36 @@ class SyncService {
       return await MongoService.submitJobApplicationOnlineOnly(data);
     }
 
+    if (action == 'save_job') {
+      final userId = data['user_id']?.toString() ?? '';
+      final jobId = data['job_id']?.toString() ?? '';
+
+      if (userId.isEmpty || jobId.isEmpty) {
+        print('❌ save_job sync failed: user_id atau job_id kosong');
+        return false;
+      }
+
+      return await MongoService.saveJob(
+        userId: userId,
+        jobId: jobId,
+      );
+    }
+
+    if (action == 'unsave_job') {
+      final userId = data['user_id']?.toString() ?? '';
+      final jobId = data['job_id']?.toString() ?? '';
+
+      if (userId.isEmpty || jobId.isEmpty) {
+        print('❌ unsave_job sync failed: user_id atau job_id kosong');
+        return false;
+      }
+
+      return await MongoService.unsaveJob(
+        userId: userId,
+        jobId: jobId,
+      );
+    }
+
     if (action == 'update_profile') {
       return await ProfileController.createOrUpdateProfile(data);
     }
