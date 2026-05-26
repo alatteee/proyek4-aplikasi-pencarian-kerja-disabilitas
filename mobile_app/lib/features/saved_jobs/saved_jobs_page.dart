@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../services/mongo_service.dart';
@@ -44,14 +46,20 @@ class _SavedJobsPageState extends State<SavedJobsPage> {
 
   Future<void> removeSavedJob(Map<String, dynamic> job) async {
     final jobId = MongoService.getMongoId(job['_id']);
-    final success = await MongoService.unsaveJob(userId: currentUserId, jobId: jobId);
+    final success = await MongoService.unsaveJob(
+      userId: currentUserId,
+      jobId: jobId,
+    );
 
     if (!mounted) return;
 
     if (success) {
       setState(() {
-        savedJobs.removeWhere((item) => MongoService.getMongoId(item['_id']) == jobId);
+        savedJobs.removeWhere(
+          (item) => MongoService.getMongoId(item['_id']) == jobId,
+        );
       });
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Lowongan dihapus dari tersimpan')),
       );
@@ -85,8 +93,12 @@ class _SavedJobsPageState extends State<SavedJobsPage> {
 
   IconData jobIcon(String title, String category) {
     final text = '${title.toLowerCase()} ${category.toLowerCase()}';
-    if (text.contains('writer') || text.contains('marketing')) return Icons.edit;
-    if (text.contains('developer') || text.contains('teknologi')) return Icons.code;
+    if (text.contains('writer') || text.contains('marketing')) {
+      return Icons.edit;
+    }
+    if (text.contains('developer') || text.contains('teknologi')) {
+      return Icons.code;
+    }
     if (text.contains('admin')) return Icons.computer;
     return Icons.headset_mic;
   }
@@ -94,6 +106,7 @@ class _SavedJobsPageState extends State<SavedJobsPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
@@ -115,13 +128,18 @@ class _SavedJobsPageState extends State<SavedJobsPage> {
       ),
       body: SafeArea(
         child: isLoading
-            ? Center(child: CircularProgressIndicator(color: theme.colorScheme.primary))
+            ? Center(
+                child: CircularProgressIndicator(
+                  color: theme.colorScheme.primary,
+                ),
+              )
             : savedJobs.isEmpty
                 ? Center(
                     child: Text(
                       'Belum ada lowongan tersimpan',
                       style: TextStyle(
-                        color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
+                        color:
+                            theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
                         fontSize: 15,
                         fontWeight: FontWeight.w500,
                       ),
@@ -131,7 +149,10 @@ class _SavedJobsPageState extends State<SavedJobsPage> {
                     color: theme.colorScheme.primary,
                     onRefresh: fetchSavedJobs,
                     child: ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 16,
+                      ),
                       itemCount: savedJobs.length,
                       itemBuilder: (context, index) {
                         final job = savedJobs[index];
@@ -140,14 +161,18 @@ class _SavedJobsPageState extends State<SavedJobsPage> {
                         final location = job['location']?.toString() ?? '-';
                         final jobType = job['job_type']?.toString() ?? '-';
                         final category = job['category']?.toString() ?? '';
+                        final jobPhoto = job['job_photo']?.toString();
 
                         return _SavedJobCard(
                           title: title,
                           company: company,
-                          timeText: formatTime(job['saved_at'] ?? job['created_at']),
+                          timeText: formatTime(
+                            job['saved_at'] ?? job['created_at'],
+                          ),
                           location: location,
                           jobType: jobType,
                           icon: jobIcon(title, category),
+                          jobPhoto: jobPhoto,
                           onTap: () {
                             Navigator.push(
                               context,
@@ -173,6 +198,7 @@ class _SavedJobCard extends StatelessWidget {
   final String location;
   final String jobType;
   final IconData icon;
+  final String? jobPhoto;
   final VoidCallback onTap;
   final VoidCallback onBookmarkTap;
 
@@ -183,26 +209,47 @@ class _SavedJobCard extends StatelessWidget {
     required this.location,
     required this.jobType,
     required this.icon,
+    this.jobPhoto,
     required this.onTap,
     required this.onBookmarkTap,
   });
 
+  ImageProvider? _buildJobPhotoProvider() {
+    final photo = jobPhoto?.trim();
+
+    if (photo == null || photo.isEmpty) {
+      return null;
+    }
+
+    try {
+      return MemoryImage(base64Decode(photo));
+    } catch (e) {
+      debugPrint('Gagal decode job_photo di SavedJobsPage: $e');
+      return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final imageProvider = _buildJobPhotoProvider();
+    final hasPhoto = imageProvider != null;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: theme.brightness == Brightness.dark ? Colors.black : Colors.white,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: theme.dividerColor),
-        boxShadow: theme.brightness == Brightness.dark ? [] : [
-          const BoxShadow(
-            color: Colors.black12,
-            blurRadius: 6,
-            offset: Offset(0, 3),
-          ),
-        ],
+        boxShadow: theme.brightness == Brightness.dark
+            ? []
+            : [
+                const BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 6,
+                  offset: Offset(0, 3),
+                ),
+              ],
       ),
       child: Material(
         color: Colors.transparent,
@@ -220,8 +267,20 @@ class _SavedJobCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: theme.colorScheme.primary.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(12),
+                    image: hasPhoto
+                        ? DecorationImage(
+                            image: imageProvider,
+                            fit: BoxFit.cover,
+                          )
+                        : null,
                   ),
-                  child: Icon(icon, color: theme.colorScheme.primary, size: 30),
+                  child: hasPhoto
+                      ? null
+                      : Icon(
+                          icon,
+                          color: theme.colorScheme.primary,
+                          size: 30,
+                        ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -240,7 +299,8 @@ class _SavedJobCard extends StatelessWidget {
                       Text(
                         company,
                         style: TextStyle(
-                          color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                          color:
+                              theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
                           fontSize: 12,
                         ),
                       ),
@@ -256,22 +316,36 @@ class _SavedJobCard extends StatelessWidget {
                       const SizedBox(height: 7),
                       Row(
                         children: [
-                          const Icon(Icons.location_on, size: 14, color: AppColors.textGray),
+                          const Icon(
+                            Icons.location_on,
+                            size: 14,
+                            color: AppColors.textGray,
+                          ),
                           const SizedBox(width: 3),
                           Flexible(
                             child: Text(
                               location,
-                              style: const TextStyle(color: AppColors.textGray, fontSize: 12),
+                              style: const TextStyle(
+                                color: AppColors.textGray,
+                                fontSize: 12,
+                              ),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           const SizedBox(width: 12),
-                          const Icon(Icons.work, size: 14, color: AppColors.textGray),
+                          const Icon(
+                            Icons.work,
+                            size: 14,
+                            color: AppColors.textGray,
+                          ),
                           const SizedBox(width: 3),
                           Flexible(
                             child: Text(
                               jobType,
-                              style: const TextStyle(color: AppColors.textGray, fontSize: 12),
+                              style: const TextStyle(
+                                color: AppColors.textGray,
+                                fontSize: 12,
+                              ),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -282,7 +356,10 @@ class _SavedJobCard extends StatelessWidget {
                 ),
                 IconButton(
                   onPressed: onBookmarkTap,
-                  icon: Icon(Icons.bookmark, color: theme.colorScheme.primary),
+                  icon: Icon(
+                    Icons.bookmark,
+                    color: theme.colorScheme.primary,
+                  ),
                 ),
               ],
             ),
