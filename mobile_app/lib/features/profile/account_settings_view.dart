@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import 'profile_controller.dart';
-import 'package:mongo_dart/mongo_dart.dart' as mongo;
 
 class AccountSettingsView extends StatefulWidget {
   final Map<String, dynamic> currentUser;
@@ -13,13 +12,20 @@ class AccountSettingsView extends StatefulWidget {
 }
 
 class _AccountSettingsViewState extends State<AccountSettingsView> {
-  final TextEditingController _passwordDisplayController = TextEditingController(text: '••••••••••••');
+  final TextEditingController _passwordDisplayController =
+      TextEditingController(text: '••••••••••••');
+
+  @override
+  void dispose() {
+    _passwordDisplayController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
@@ -57,19 +63,26 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
               decoration: BoxDecoration(
                 color: isDark ? Colors.black : Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: isDark ? [] : [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-                border: Border.all(color: isDark ? Colors.yellow : Colors.grey.shade100),
+                boxShadow: isDark
+                    ? []
+                    : [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                border: Border.all(
+                  color: isDark ? Colors.yellow : Colors.grey.shade100,
+                ),
               ),
               padding: const EdgeInsets.all(16),
               child: Row(
                 children: [
-                  Icon(Icons.vpn_key_outlined, color: theme.colorScheme.primary),
+                  Icon(
+                    Icons.vpn_key_outlined,
+                    color: theme.colorScheme.primary,
+                  ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: TextField(
@@ -84,7 +97,8 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
                       style: TextStyle(
                         letterSpacing: 2,
                         fontSize: 18,
-                        color: theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
+                        color:
+                            theme.textTheme.bodyMedium?.color?.withOpacity(0.5),
                       ),
                     ),
                   ),
@@ -93,7 +107,7 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
                     height: 40,
                     child: ElevatedButton(
                       onPressed: () {
-                        _showChangePasswordDialog(context);
+                        _showChangePasswordBottomSheet(context);
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: theme.colorScheme.primary,
@@ -122,108 +136,221 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
     );
   }
 
-  void _showChangePasswordDialog(BuildContext context) {
-    final theme = Theme.of(context);
+  void _showChangePasswordBottomSheet(BuildContext context) {
+    final pageContext = context;
+    final theme = Theme.of(pageContext);
     final isDark = theme.brightness == Brightness.dark;
 
-    final TextEditingController oldPassController = TextEditingController();
-    final TextEditingController newPassController = TextEditingController();
-    final TextEditingController confirmPassController = TextEditingController();
+    final oldPassController = TextEditingController();
+    final newPassController = TextEditingController();
+    final confirmPassController = TextEditingController();
+
     bool obscureOld = true;
     bool obscureNew = true;
     bool obscureConfirm = true;
+    bool isSaving = false;
 
     showModalBottomSheet(
-      context: context,
+      context: pageContext,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (builderContext) => StatefulBuilder(builder: (context, setModalState) {
-        return Container(
-          decoration: BoxDecoration(
-            color: isDark ? Colors.black : Colors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-            border: isDark ? Border.all(color: Colors.yellow) : null,
-          ),
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom + 32,
-            left: 24,
-            right: 24,
-            top: 32,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Ubah Kata Sandi',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-              const SizedBox(height: 24),
-              _buildPasswordField(
-                context,
-                label: 'Kata Sandi Lama',
-                controller: oldPassController,
-                isObscured: obscureOld,
-                onToggle: () => setModalState(() => obscureOld = !obscureOld),
-              ),
-              const SizedBox(height: 16),
-              _buildPasswordField(
-                context,
-                label: 'Kata Sandi Baru',
-                controller: newPassController,
-                isObscured: obscureNew,
-                onToggle: () => setModalState(() => obscureNew = !obscureNew),
-              ),
-              const SizedBox(height: 16),
-              _buildPasswordField(
-                context,
-                label: 'Konfirmasi Kata Sandi Baru',
-                controller: confirmPassController,
-                isObscured: obscureConfirm,
-                onToggle: () => setModalState(() => obscureConfirm = !obscureConfirm),
-              ),
-              const SizedBox(height: 32),
-              SizedBox(
-                width: double.infinity,
-                height: 54,
-                child: ElevatedButton(
-                  onPressed: () {
-                    if (newPassController.text != confirmPassController.text) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Konfirmasi password tidak cocok')),
-                      );
-                      return;
-                    }
-                    if (newPassController.text.isEmpty || oldPassController.text.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Semua field harus diisi')),
-                      );
-                      return;
-                    }
-                    _showConfirmUpdateDialog(context, oldPassController.text, newPassController.text);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: theme.colorScheme.primary,
-                    foregroundColor: isDark ? Colors.black : Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+      builder: (bottomSheetContext) {
+        return StatefulBuilder(
+          builder: (modalContext, setModalState) {
+            Future<void> savePassword() async {
+              if (isSaving) return;
+
+              final oldPass = oldPassController.text.trim();
+              final newPass = newPassController.text.trim();
+              final confirmPass = confirmPassController.text.trim();
+
+              if (oldPass.isEmpty || newPass.isEmpty || confirmPass.isEmpty) {
+                ScaffoldMessenger.of(pageContext).showSnackBar(
+                  const SnackBar(
+                    content: Text('Semua field harus diisi'),
+                  ),
+                );
+                return;
+              }
+
+              if (newPass.length < 6) {
+                ScaffoldMessenger.of(pageContext).showSnackBar(
+                  const SnackBar(
+                    content: Text('Kata sandi baru minimal 6 karakter'),
+                  ),
+                );
+                return;
+              }
+
+              if (newPass != confirmPass) {
+                ScaffoldMessenger.of(pageContext).showSnackBar(
+                  const SnackBar(
+                    content: Text('Konfirmasi password tidak cocok'),
+                  ),
+                );
+                return;
+              }
+
+              setModalState(() {
+                isSaving = true;
+              });
+
+              final success = await ProfileController.updatePassword(
+                widget.currentUser['_id'],
+                oldPass,
+                newPass,
+              );
+
+              if (!mounted) return;
+
+              setModalState(() {
+                isSaving = false;
+              });
+
+              FocusScope.of(modalContext).unfocus();
+
+              final messenger = ScaffoldMessenger.of(pageContext);
+
+              await Future.delayed(const Duration(milliseconds: 200));
+
+              if (!mounted) return;
+
+              if (success) {
+                Navigator.of(bottomSheetContext).pop();
+
+                await Future.delayed(const Duration(milliseconds: 150));
+
+                if (!mounted) return;
+
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('Kata sandi berhasil diperbarui'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } else {
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Kata sandi lama tidak cocok atau gagal memperbarui kata sandi',
                     ),
-                    elevation: 0,
+                    backgroundColor: Colors.red,
                   ),
-                  child: const Text(
-                    'Simpan Perubahan',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                );
+              }
+            }
+
+            return SafeArea(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(modalContext).viewInsets.bottom,
+                ),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.black : Colors.white,
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(28)),
+                    border: isDark ? Border.all(color: Colors.yellow) : null,
+                  ),
+                  padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Ubah Kata Sandi',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      _buildPasswordField(
+                        modalContext,
+                        label: 'Kata Sandi Lama',
+                        controller: oldPassController,
+                        isObscured: obscureOld,
+                        onToggle: isSaving
+                            ? null
+                            : () {
+                                setModalState(() {
+                                  obscureOld = !obscureOld;
+                                });
+                              },
+                      ),
+                      const SizedBox(height: 16),
+                      _buildPasswordField(
+                        modalContext,
+                        label: 'Kata Sandi Baru',
+                        controller: newPassController,
+                        isObscured: obscureNew,
+                        onToggle: isSaving
+                            ? null
+                            : () {
+                                setModalState(() {
+                                  obscureNew = !obscureNew;
+                                });
+                              },
+                      ),
+                      const SizedBox(height: 16),
+                      _buildPasswordField(
+                        modalContext,
+                        label: 'Konfirmasi Kata Sandi Baru',
+                        controller: confirmPassController,
+                        isObscured: obscureConfirm,
+                        onToggle: isSaving
+                            ? null
+                            : () {
+                                setModalState(() {
+                                  obscureConfirm = !obscureConfirm;
+                                });
+                              },
+                      ),
+                      const SizedBox(height: 32),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 54,
+                        child: ElevatedButton(
+                          onPressed: isSaving ? null : savePassword,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: theme.colorScheme.primary,
+                            foregroundColor:
+                                isDark ? Colors.black : Colors.white,
+                            disabledBackgroundColor:
+                                theme.colorScheme.primary.withOpacity(0.5),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: isSaving
+                              ? SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color:
+                                        isDark ? Colors.black : Colors.white,
+                                  ),
+                                )
+                              : const Text(
+                                  'Simpan Perubahan',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ],
-          ),
+            );
+          },
         );
-      }),
+      },
     );
   }
 
@@ -232,7 +359,7 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
     required String label,
     required TextEditingController controller,
     required bool isObscured,
-    required VoidCallback onToggle,
+    required VoidCallback? onToggle,
   }) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -243,21 +370,25 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
         Text(
           label,
           style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: theme.textTheme.bodySmall?.color),
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: theme.textTheme.bodySmall?.color,
+          ),
         ),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
           obscureText: isObscured,
+          enabled: onToggle != null,
           style: TextStyle(color: theme.textTheme.bodyLarge?.color),
           decoration: InputDecoration(
             filled: true,
             fillColor: isDark ? Colors.black : const Color(0xFFF9FAFB),
             suffixIcon: IconButton(
               icon: Icon(
-                isObscured ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                isObscured
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
                 color: theme.colorScheme.primary,
                 size: 20,
               ),
@@ -265,153 +396,36 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: isDark ? Colors.yellow : Colors.grey.shade200),
+              borderSide: BorderSide(
+                color: isDark ? Colors.yellow : Colors.grey.shade200,
+              ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: isDark ? Colors.yellow : Colors.grey.shade200),
+              borderSide: BorderSide(
+                color: isDark ? Colors.yellow : Colors.grey.shade200,
+              ),
+            ),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: isDark ? Colors.yellow : Colors.grey.shade200,
+              ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: theme.colorScheme.primary, width: 1.5),
+              borderSide: BorderSide(
+                color: theme.colorScheme.primary,
+                width: 1.5,
+              ),
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
           ),
         ),
       ],
-    );
-  }
-
-  void _showConfirmUpdateDialog(BuildContext context, String oldPass, String newPass) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: theme.scaffoldBackgroundColor,
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: isDark ? const BorderSide(color: Colors.yellow) : BorderSide.none),
-        title: Text('Konfirmasi', style: TextStyle(color: theme.colorScheme.primary)),
-        content: Text('Apakah anda yakin ingin mengubah kata sandi anda?',
-            style: TextStyle(color: theme.textTheme.bodyMedium?.color)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: Text('Batal', style: TextStyle(color: theme.colorScheme.primary)),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(dialogContext);
-
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (loadingContext) => Center(
-                  child: Card(
-                    color: isDark ? Colors.black : Colors.white,
-                    child: Padding(
-                      padding: const EdgeInsets.all(20.0),
-                      child: CircularProgressIndicator(color: theme.colorScheme.primary),
-                    ),
-                  ),
-                ),
-              );
-
-              try {
-                final success = await ProfileController.updatePassword(
-                    widget.currentUser['_id'] as mongo.ObjectId, oldPass, newPass);
-
-                if (mounted) {
-                  Navigator.pop(context);
-                  if (success) {
-                    Navigator.pop(context);
-
-                    // Tampilkan Dialog Sukses yang Informatif
-                    showDialog(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        backgroundColor: theme.scaffoldBackgroundColor,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            side: isDark ? const BorderSide(color: Colors.yellow) : BorderSide.none),
-                        content: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const SizedBox(height: 16),
-                            Icon(Icons.check_circle,
-                                color: isDark ? Colors.yellow : Colors.green, size: 64),
-                            const SizedBox(height: 24),
-                            const Text(
-                              'Berhasil!',
-                              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.primaryNavy),
-                            ),
-                            const SizedBox(height: 12),
-                            const Text(
-                              'Kata sandi Anda telah berhasil diperbarui.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(color: Colors.grey),
-                            ),
-                            const SizedBox(height: 24),
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: () => Navigator.pop(context),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primaryNavy,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                ),
-                                child: const Text('Selesai', style: TextStyle(color: Colors.white)),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  } else {
-                    _showErrorDialog(context);
-                  }
-                }
-              } catch (e) {
-                if (mounted) Navigator.pop(context);
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryNavy,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('Ya, Ubah'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showErrorDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.orange),
-            SizedBox(width: 8),
-            Text('Perhatian'),
-          ],
-        ),
-        content: const Text(
-          'Kata sandi lama yang Anda masukkan tidak cocok. Silakan periksa kembali.',
-          style: TextStyle(fontSize: 15),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Tutup', style: TextStyle(color: AppColors.primaryNavy, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
     );
   }
 }
