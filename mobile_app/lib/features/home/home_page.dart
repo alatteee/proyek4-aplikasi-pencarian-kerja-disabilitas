@@ -47,6 +47,12 @@ class _HomePageState extends State<HomePage> {
   String searchQuery = '';
   Timer? _searchDebounceTimer;
 
+  // ⚡ PERF: Pagination state
+  bool isLoadingMore = false;
+  int currentSkip = 0;
+  static const int pageSize = 15;
+  late ScrollController _scrollController;
+
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -54,6 +60,10 @@ class _HomePageState extends State<HomePage> {
     super.initState();
 
     _selectedIndex = widget.initialIndex.clamp(0, 3).toInt();
+
+    // ⚡ PERF: Initialize scroll controller for pagination
+    _scrollController = ScrollController();
+    _scrollController.addListener(_onScroll);
 
     if (widget.showSuccessDialog) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -65,10 +75,49 @@ class _HomePageState extends State<HomePage> {
     fetchJobs();
   }
 
+  /// ⚡ PERF: Auto-load more jobs when user scrolls near bottom
+  void _onScroll() {
+    if (_scrollController.position.pixels > 
+        _scrollController.position.maxScrollExtent - 500) {
+      if (!isLoadingMore && filteredJobs.isNotEmpty) {
+        _loadMoreJobs();
+      }
+    }
+  }
+
+  /// ⚡ PERF: Load next page of jobs
+  Future<void> _loadMoreJobs() async {
+    if (isLoadingMore) return;
+
+    setState(() => isLoadingMore = true);
+
+    try {
+      final moreJobs = await MongoService.getPublishedJobsPaginated(
+        limit: pageSize,
+        skip: currentSkip + pageSize,
+      );
+
+      if (mounted) {
+        setState(() {
+          jobs.addAll(moreJobs);
+          currentSkip += pageSize;
+          isLoadingMore = false;
+        });
+        applyFilters();
+      }
+    } catch (e) {
+      print('❌ Error loading more jobs: $e');
+      if (mounted) {
+        setState(() => isLoadingMore = false);
+      }
+    }
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
     _searchDebounceTimer?.cancel();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -140,6 +189,9 @@ class _HomePageState extends State<HomePage> {
         isLoading = true;
       });
     }
+
+    // ⚡ PERF: Reset pagination when doing fresh fetch
+    currentSkip = 0;
 
     try {
       // ⚡ PERF: Jalankan kedua query PARALLEL (bukan sequential)
@@ -707,259 +759,299 @@ class _HomePageState extends State<HomePage> {
     return RefreshIndicator(
       color: theme.colorScheme.primary,
       onRefresh: _handleRefresh,
-      child: SingleChildScrollView(
+      child: ListView(
+        controller: _scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              isLoadingProfileName
-                  ? 'Halo. ${_getGreeting()}!'
-                  : 'Halo, ${_getDisplayName()}. ${_getGreeting()}!',
+        children: [
+          // === HEADER SECTION ===
+          Text(
+            isLoadingProfileName
+                ? 'Halo. ${_getGreeting()}!'
+                : 'Halo, ${_getDisplayName()}. ${_getGreeting()}!',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: theme.textTheme.bodyLarge?.color,
+            ),
+          ),
+          const SizedBox(height: 20),
+          // Search Box
+          Container(
+            decoration: BoxDecoration(
+              color: theme.brightness == Brightness.dark
+                  ? Colors.black
+                  : Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: theme.dividerColor,
+              ),
+            ),
+            child: TextField(
+              controller: _searchController,
               style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
                 color: theme.textTheme.bodyLarge?.color,
               ),
-            ),
-            const SizedBox(height: 20),
-            Container(
-              decoration: BoxDecoration(
-                color: theme.brightness == Brightness.dark
-                    ? Colors.black
-                    : Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: theme.dividerColor,
+              onChanged: (value) {
+                // ⚡ PERF: Debounce search input (delay 500ms)
+                _searchDebounceTimer?.cancel();
+                _searchDebounceTimer = Timer(const Duration(milliseconds: 500), () {
+                  if (mounted) {
+                    setState(() => searchQuery = value);
+                    applyFilters();
+                  }
+                });
+              },
+              decoration: InputDecoration(
+                hintText: 'Cari Lowongan Pekerjaan...',
+                hintStyle: TextStyle(
+                  color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
                 ),
-              ),
-              child: TextField(
-                controller: _searchController,
-                style: TextStyle(
-                  color: theme.textTheme.bodyLarge?.color,
-                ),
-                onChanged: (value) {
-                  // ⚡ PERF: Debounce search input (delay 500ms)
-                  _searchDebounceTimer?.cancel();
-                  _searchDebounceTimer = Timer(const Duration(milliseconds: 500), () {
-                    if (mounted) {
-                      setState(() => searchQuery = value);
-                      applyFilters();
-                    }
-                  });
-                },
-                decoration: InputDecoration(
-                  hintText: 'Cari Lowongan Pekerjaan...',
-                  hintStyle: TextStyle(
-                    color: theme.textTheme.bodyMedium?.color?.withOpacity(0.6),
-                  ),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
                 ),
               ),
             ),
-            const SizedBox(height: 12),
-            ValueListenableBuilder<bool>(
-              valueListenable: AccessibilityController.highContrastNotifier,
-              builder: (context, isHighContrast, _) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isHighContrast
-                        ? Colors.black
-                        : AppColors.primaryNavy.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(12),
-                    border: isHighContrast
-                        ? Border.all(
-                            color: Colors.yellow,
-                            width: 2,
-                          )
-                        : null,
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.visibility,
-                              size: 20,
-                              color: isHighContrast
-                                  ? Colors.yellow
-                                  : AppColors.primaryNavy,
+          ),
+          const SizedBox(height: 12),
+          // High Contrast Toggle
+          ValueListenableBuilder<bool>(
+            valueListenable: AccessibilityController.highContrastNotifier,
+            builder: (context, isHighContrast, _) {
+              return Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: isHighContrast
+                      ? Colors.black
+                      : AppColors.primaryNavy.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: isHighContrast
+                      ? Border.all(
+                          color: Colors.yellow,
+                          width: 2,
+                        )
+                      : null,
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.visibility,
+                            size: 20,
+                            color: isHighContrast
+                                ? Colors.yellow
+                                : AppColors.primaryNavy,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Mode Kontras Tinggi',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: isHighContrast
+                                    ? Colors.yellow
+                                    : AppColors.primaryNavy,
+                              ),
                             ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch(
+                      value: isHighContrast,
+                      activeThumbColor: Colors.yellow,
+                      activeTrackColor: Colors.grey.shade800,
+                      onChanged: (value) {
+                        AccessibilityController.setHighContrast(value);
+                        _showCustomSnackBar(
+                          message: value
+                              ? 'Mode Kontras Tinggi Diaktifkan'
+                              : 'Mode Kontras Tinggi Dimatikan',
+                          icon: value
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                          backgroundColor:
+                              value ? Colors.black : Colors.grey.shade800,
+                          isHighContrast: value,
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 24),
+          // Category Buttons
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      selectedCategory = 'Semua';
+                    });
+                    applyFilters();
+                  },
+                  child: _CategoryButton(
+                    'Semua',
+                    selectedCategory == 'Semua',
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      selectedCategory = 'Teknologi';
+                    });
+                    applyFilters();
+                  },
+                  child: _CategoryButton(
+                    'Teknologi',
+                    selectedCategory == 'Teknologi',
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      selectedCategory = 'Marketing';
+                    });
+                    applyFilters();
+                  },
+                  child: _CategoryButton(
+                    'Marketing',
+                    selectedCategory == 'Marketing',
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      selectedCategory = 'Admin';
+                    });
+                    applyFilters();
+                  },
+                  child: _CategoryButton(
+                    'Admin',
+                    selectedCategory == 'Admin',
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 32),
+          // === JOBS LIST SECTION ===
+          Text(
+            'Lowongan Terbaru',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: theme.textTheme.titleLarge?.color,
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (isLoading)
+            Center(
+              child: CircularProgressIndicator(
+                color: theme.colorScheme.primary,
+              ),
+            )
+          else if (filteredJobs.isEmpty)
+            Center(
+              child: Text(
+                'Tidak ada lowongan yang cocok',
+                style: TextStyle(color: theme.textTheme.bodyMedium?.color),
+              ),
+            )
+          else
+            ...filteredJobs.map(
+              (job) {
+                final jobMap = job as Map<String, dynamic>;
+                return ValueListenableBuilder<bool>(
+                  valueListenable: AccessibilityController.highContrastNotifier,
+                  builder: (context, isHighContrast, _) {
+                    return _JobCard(
+                      job: jobMap,
+                      isSaved: savedJobIds.contains(_jobIdOf(jobMap)),
+                      isHighContrast: isHighContrast,
+                      onDetail: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => JobDetailPage(
+                              job: jobMap,
+                              currentUser: widget.userData,
+                            ),
+                          ),
+                        );
+                      },
+                      onSave: () => toggleSaveJob(jobMap, isHighContrast),
+                    );
+                  },
+                );
+              },
+            ),
+          // === LOAD MORE BUTTON ===
+          if (filteredJobs.isNotEmpty && jobs.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 16.0, bottom: 20.0),
+              child: SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: isLoadingMore
+                    ? Center(
+                        child: CircularProgressIndicator(
+                          color: theme.colorScheme.primary,
+                        ),
+                      )
+                    : ElevatedButton(
+                        onPressed: _loadMoreJobs,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: theme.colorScheme.primary,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.refresh, color: theme.colorScheme.onPrimary),
                             const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'Mode Kontras Tinggi',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: isHighContrast
-                                      ? Colors.yellow
-                                      : AppColors.primaryNavy,
-                                ),
+                            Text(
+                              'Muat Lebih Banyak',
+                              style: TextStyle(
+                                color: theme.colorScheme.onPrimary,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      Switch(
-                        value: isHighContrast,
-                        activeThumbColor: Colors.yellow,
-                        activeTrackColor: Colors.grey.shade800,
-                        onChanged: (value) {
-                          AccessibilityController.setHighContrast(value);
-                          _showCustomSnackBar(
-                            message: value
-                                ? 'Mode Kontras Tinggi Diaktifkan'
-                                : 'Mode Kontras Tinggi Dimatikan',
-                            icon: value
-                                ? Icons.visibility
-                                : Icons.visibility_off,
-                            backgroundColor:
-                                value ? Colors.black : Colors.grey.shade800,
-                            isHighContrast: value,
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        selectedCategory = 'Semua';
-                      });
-                      applyFilters();
-                    },
-                    child: _CategoryButton(
-                      'Semua',
-                      selectedCategory == 'Semua',
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        selectedCategory = 'Teknologi';
-                      });
-                      applyFilters();
-                    },
-                    child: _CategoryButton(
-                      'Teknologi',
-                      selectedCategory == 'Teknologi',
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        selectedCategory = 'Marketing';
-                      });
-                      applyFilters();
-                    },
-                    child: _CategoryButton(
-                      'Marketing',
-                      selectedCategory == 'Marketing',
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        selectedCategory = 'Admin';
-                      });
-                      applyFilters();
-                    },
-                    child: _CategoryButton(
-                      'Admin',
-                      selectedCategory == 'Admin',
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 32),
-            Text(
-              'Lowongan Terbaru',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: theme.textTheme.titleLarge?.color,
               ),
             ),
-            const SizedBox(height: 16),
-            if (isLoading)
-              Center(
-                child: CircularProgressIndicator(
-                  color: theme.colorScheme.primary,
-                ),
-              )
-            else if (filteredJobs.isEmpty)
-              Center(
-                child: Text(
-                  'Tidak ada lowongan yang cocok',
-                  style: TextStyle(color: theme.textTheme.bodyMedium?.color),
-                ),
-              )
-            else
-              ...filteredJobs.map(
-                (job) {
-                  final jobMap = job as Map<String, dynamic>;
-                  return ValueListenableBuilder<bool>(
-                    valueListenable: AccessibilityController.highContrastNotifier,
-                    builder: (context, isHighContrast, _) {
-                      return _JobCard(
-                        job: jobMap,
-                        isSaved: savedJobIds.contains(_jobIdOf(jobMap)),
-                        isHighContrast: isHighContrast,
-                        onDetail: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => JobDetailPage(
-                                job: jobMap,
-                                currentUser: widget.userData,
-                              ),
-                            ),
-                          );
-                        },
-                        onSave: () => toggleSaveJob(jobMap, isHighContrast),
-                      );
-                    },
-                  );
-                },
-              ),
-            const SizedBox(height: 20),
-          ],
-        ),
+        ],
       ),
     );
   }
