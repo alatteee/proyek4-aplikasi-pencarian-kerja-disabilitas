@@ -114,25 +114,26 @@ class ProfileController {
   static Future<bool> createOrUpdateProfile(Map<String, dynamic> data) async {
     try {
       final dynamic rawUserId = data['user_id'];
-      final ObjectId? objId = rawUserId is ObjectId ? rawUserId : _tryParseObjectId(rawUserId);
+      final ObjectId? objId =
+          rawUserId is ObjectId ? rawUserId : _tryParseObjectId(rawUserId);
+
       if (objId == null) return false;
-      
+
       // Ensure data has the correct ObjectId for user_id before saving
       data['user_id'] = objId;
 
       final String idString = objId.toHexString();
       final hasConnection = await connectivityService.checkConnection();
-      
+
       if (!hasConnection) {
         print('📱 Profile update: Offline. Queueing sync.');
-        // Update local cache agar UI langsung berubah
         await OfflineService.cacheUserProfile(idString, data);
         await OfflineService.addToSyncQueue('update_profile', data);
         return true;
       }
 
       await MongoService.ensureConnected();
-      
+
       // Verify koneksi sebelum operasi DB
       final isLive = await MongoService.verifyConnected();
       if (!isLive) {
@@ -141,26 +142,76 @@ class ProfileController {
         await OfflineService.addToSyncQueue('update_profile', data);
         return true;
       }
-      
+
+      final now = DateTime.now();
+
+      final newEmail = data['email']?.toString().trim();
+      final newName = data['nama_lengkap']?.toString().trim();
+      final newPhone = data['phone']?.toString().trim();
+
+      if (newEmail == null || newEmail.isEmpty) {
+        print('❌ Email kosong, profile tidak disimpan');
+        return false;
+      }
+
+      // Cek apakah email baru sudah digunakan user lain
+      final existingUserWithEmail = await MongoService.users.findOne(
+        where.eq('email', newEmail),
+      );
+
+      if (existingUserWithEmail != null) {
+        final existingUserId = existingUserWithEmail['_id'];
+        final existingObjId = existingUserId is ObjectId
+            ? existingUserId
+            : _tryParseObjectId(existingUserId);
+
+        if (existingObjId == null ||
+            existingObjId.toHexString() != objId.toHexString()) {
+          print('❌ Email sudah digunakan oleh user lain');
+          return false;
+        }
+      }
+
+      // Update collection users agar email baru bisa dipakai login
+      await MongoService.users.update(
+        where.id(objId),
+        modify
+            .set('email', newEmail)
+            .set('username', newName)
+            .set('phone', newPhone)
+            .set('updated_at', now),
+      );
+
+      // Update / insert collection user_details untuk data profil lengkap
+      data['email'] = newEmail;
+      data['nama_lengkap'] = newName;
+      data['phone'] = newPhone;
+      data['updated_at'] = now;
+
       if (await profileExists(objId)) {
-        data['updated_at'] = DateTime.now();
-        await MongoService.userDetails.update(where.eq('user_id', objId), { r'$set': data });
+        await MongoService.userDetails.update(
+          where.eq('user_id', objId),
+          {r'$set': data},
+        );
       } else {
-        data['created_at'] = DateTime.now();
-        data['updated_at'] = DateTime.now();
+        data['created_at'] = now;
         await MongoService.userDetails.insert(data);
       }
 
       // Update local cache setelah sukses online
       await OfflineService.cacheUserProfile(idString, data);
-      
+
       return true;
     } catch (e) {
       print('❌ Error createOrUpdateProfile: $e');
+
       // Fallback: cache dan queue untuk sync nanti
       try {
         final dynamic rawUserId = data['user_id'];
-        final String idString = rawUserId is ObjectId ? rawUserId.toHexString() : rawUserId.toString();
+        final String idString = rawUserId is ObjectId
+            ? rawUserId.toHexString()
+            : rawUserId.toString();
+
         await OfflineService.cacheUserProfile(idString, data);
         await OfflineService.addToSyncQueue('update_profile', data);
         return true;
