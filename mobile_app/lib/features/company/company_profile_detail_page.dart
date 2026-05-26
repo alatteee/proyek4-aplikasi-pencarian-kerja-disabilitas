@@ -291,8 +291,10 @@ class _CompanyProfileDetailPageState extends State<CompanyProfileDetailPage> {
             alignment: Alignment.centerLeft,
             child: Text(
               value,
-              maxLines: minHeight > 70 ? 4 : 1,
-              overflow: TextOverflow.ellipsis,
+              maxLines: minHeight > 70 ? null : 1,
+              overflow: minHeight > 70
+                  ? TextOverflow.visible
+                  : TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: 13.5,
                 fontWeight: FontWeight.w800,
