@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../../core/constants/app_colors.dart';
 import '../../services/mongo_service.dart';
 import '../../services/offline_service.dart';
+import '../../services/connectivity_service.dart';
 import '../job_detail/job_detail_page.dart';
 import '../applications/applications_page.dart';
 import '../profile/profile_view.dart';
@@ -151,6 +152,28 @@ class _HomePageState extends State<HomePage> {
     });
 
     applyFilters();
+  }
+
+  /// Handles pull-to-refresh logic based on connectivity.
+  Future<void> _handleRefresh() async {
+    final isOnline = await connectivityService.checkConnection();
+    final isHighContrast = AccessibilityController.highContrastNotifier.value;
+
+    if (isOnline) {
+      // Jika online, paksa fetch dari server dan hapus cache lama
+      await forceFreshFetch();
+    } else {
+      // Jika offline, cukup fetch dari cache (jika ada)
+      await fetchJobs();
+      if (mounted) {
+        _showCustomSnackBar(
+          message: 'Anda sedang offline. Menampilkan data dari cache.',
+          icon: Icons.wifi_off,
+          backgroundColor: Colors.grey.shade800,
+          isHighContrast: isHighContrast,
+        );
+      }
+    }
   }
 
   /// Force refresh jobs dari MongoDB (clear cache dan fetch fresh)
@@ -667,7 +690,7 @@ class _HomePageState extends State<HomePage> {
 
     return RefreshIndicator(
       color: theme.colorScheme.primary,
-      onRefresh: forceFreshFetch,
+      onRefresh: _handleRefresh,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(20.0),
