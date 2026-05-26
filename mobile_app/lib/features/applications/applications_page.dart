@@ -51,23 +51,72 @@ class _ApplicationsPageState extends State<ApplicationsPage> {
   }
 
   String _statusToFilter(String? status) {
-    final s = (status ?? '').toLowerCase();
-    
-    // Status 'ditinjau' (Reviewed) seharusnya masuk ke tab 'Diproses'
-    if (s == 'ditinjau' || s == 'reviewed' || s == 'diproses' || s == 'processed' || s == 'review') {
+    final s = (status ?? '').toLowerCase().trim();
+
+    // Status awal / baru dikirim
+    if (s == 'dikirim' ||
+        s == 'submitted' ||
+        s == 'pending' ||
+        s == 'menunggu') {
+      return 'Dikirim';
+    }
+
+    // Status proses berjalan
+    // Termasuk ditinjau dan wawancara, karena belum termasuk status akhir.
+    if (s == 'ditinjau' ||
+        s == 'reviewed' ||
+        s == 'review' ||
+        s == 'diproses' ||
+        s == 'processed' ||
+        s == 'wawancara' ||
+        s == 'interview') {
       return 'Diproses';
     }
-    
-    // Status akhir
-    if (s == 'diterima' || s == 'accepted' || s == 'wawancara' || s == 'interview' || s == 'lolos' || s == 'selesai') {
+
+    // Status akhir berhasil
+    if (s == 'diterima' ||
+        s == 'accepted' ||
+        s == 'lolos' ||
+        s == 'selesai') {
       return 'Selesai';
     }
-    
-    if (s == 'rejected' || s == 'ditolak') {
+
+    // Status akhir ditolak
+    if (s == 'ditolak' ||
+        s == 'rejected') {
       return 'Ditolak';
     }
 
-    // Default untuk lamaran yang baru dikirim
+    return 'Dikirim';
+  }
+
+  String _statusToLabel(String? status) {
+    final s = (status ?? '').toLowerCase().trim();
+
+    if (s == 'ditinjau' || s == 'reviewed' || s == 'review') {
+      return 'Ditinjau';
+    }
+
+    if (s == 'wawancara' || s == 'interview') {
+      return 'Wawancara';
+    }
+
+    if (s == 'diproses' || s == 'processed') {
+      return 'Diproses';
+    }
+
+    if (s == 'diterima' || s == 'accepted' || s == 'lolos') {
+      return 'Diterima';
+    }
+
+    if (s == 'selesai') {
+      return 'Selesai';
+    }
+
+    if (s == 'ditolak' || s == 'rejected') {
+      return 'Ditolak';
+    }
+
     return 'Dikirim';
   }
 
@@ -180,7 +229,7 @@ class _ApplicationsPageState extends State<ApplicationsPage> {
                             child: _ApplicationCard(
                               title: application['job_title']?.toString() ?? '-',
                               company: application['company_name']?.toString() ?? '-',
-                              statusLabel: _statusToFilter(application['status']?.toString()),
+                              statusLabel: _statusToLabel(application['status']?.toString()),
                               dateText: _formatDate(application['created_at']),
                               jobPhoto: application['job_photo']?.toString(),
                               isHighContrast: isHighContrast,
@@ -361,17 +410,23 @@ class _ApplicationCard extends StatelessWidget {
     if (isHighContrast) {
       switch (status) {
         case 'Selesai':
+        case 'Diterima':
           bgColor = Colors.green.withOpacity(0.3);
           textColor = Colors.green;
           break;
+
         case 'Diproses':
+        case 'Ditinjau':
+        case 'Wawancara':
           bgColor = Colors.orange.withOpacity(0.3);
           textColor = Colors.orange;
           break;
+
         case 'Ditolak':
           bgColor = Colors.red.withOpacity(0.3);
           textColor = Colors.red;
           break;
+
         case 'Dikirim':
         default:
           bgColor = AccessibilityTheme.yellow.withOpacity(0.2);
@@ -380,17 +435,23 @@ class _ApplicationCard extends StatelessWidget {
     } else {
       switch (status) {
         case 'Selesai':
+        case 'Diterima':
           bgColor = const Color(0xFFD4F0DD);
           textColor = const Color(0xFF18A64A);
           break;
+
         case 'Diproses':
+        case 'Ditinjau':
+        case 'Wawancara':
           bgColor = const Color(0xFFFFE4B8);
           textColor = const Color(0xFFF59E0B);
           break;
+
         case 'Ditolak':
           bgColor = const Color(0xFFFFDADA);
           textColor = const Color(0xFFE53935);
           break;
+
         case 'Dikirim':
         default:
           bgColor = theme.colorScheme.primary.withOpacity(0.1);
