@@ -627,16 +627,58 @@ class MongoService {
     required String jobId,
   }) async {
     try {
-      await ensureConnected();
-
       if (userId.isEmpty || jobId.isEmpty) return false;
+
+      final hasConnection = await connectivityService.checkConnection();
+
+      if (!hasConnection) {
+        print('📱 saveJob: Offline. Saving to local cache and sync queue.');
+
+        await OfflineService.addCachedSavedJob(
+          userId: userId,
+          jobId: jobId,
+        );
+
+        await OfflineService.addToSyncQueue('save_job', {
+          'user_id': userId,
+          'job_id': jobId,
+          'saved_at': DateTime.now().toIso8601String(),
+        });
+
+        return true;
+      }
+
+      final isLive = await ensureConnected();
+
+      if (!isLive) {
+        print('⚠️ saveJob: DB not live. Saving to local cache and sync queue.');
+
+        await OfflineService.addCachedSavedJob(
+          userId: userId,
+          jobId: jobId,
+        );
+
+        await OfflineService.addToSyncQueue('save_job', {
+          'user_id': userId,
+          'job_id': jobId,
+          'saved_at': DateTime.now().toIso8601String(),
+        });
+
+        return true;
+      }
 
       final existing = await _savedJobsCollection.findOne({
         'user_id': userId,
         'job_id': jobId,
       });
 
-      if (existing != null) return true;
+      if (existing != null) {
+        await OfflineService.addCachedSavedJob(
+          userId: userId,
+          jobId: jobId,
+        );
+        return true;
+      }
 
       await _savedJobsCollection.insertOne({
         'user_id': userId,
@@ -644,10 +686,32 @@ class MongoService {
         'saved_at': DateTime.now().toUtc(),
       });
 
+      await OfflineService.addCachedSavedJob(
+        userId: userId,
+        jobId: jobId,
+      );
+
       return true;
     } catch (e) {
       print('Gagal menyimpan lowongan: $e');
-      return false;
+
+      try {
+        await OfflineService.addCachedSavedJob(
+          userId: userId,
+          jobId: jobId,
+        );
+
+        await OfflineService.addToSyncQueue('save_job', {
+          'user_id': userId,
+          'job_id': jobId,
+          'saved_at': DateTime.now().toIso8601String(),
+        });
+
+        return true;
+      } catch (fallbackError) {
+        print('❌ saveJob fallback error: $fallbackError');
+        return false;
+      }
     }
   }
 
@@ -656,19 +720,77 @@ class MongoService {
     required String jobId,
   }) async {
     try {
-      await ensureConnected();
-
       if (userId.isEmpty || jobId.isEmpty) return false;
+
+      final hasConnection = await connectivityService.checkConnection();
+
+      if (!hasConnection) {
+        print('📱 unsaveJob: Offline. Removing from local cache and sync queue.');
+
+        await OfflineService.removeCachedSavedJob(
+          userId: userId,
+          jobId: jobId,
+        );
+
+        await OfflineService.addToSyncQueue('unsave_job', {
+          'user_id': userId,
+          'job_id': jobId,
+          'unsaved_at': DateTime.now().toIso8601String(),
+        });
+
+        return true;
+      }
+
+      final isLive = await ensureConnected();
+
+      if (!isLive) {
+        print('⚠️ unsaveJob: DB not live. Removing from local cache and sync queue.');
+
+        await OfflineService.removeCachedSavedJob(
+          userId: userId,
+          jobId: jobId,
+        );
+
+        await OfflineService.addToSyncQueue('unsave_job', {
+          'user_id': userId,
+          'job_id': jobId,
+          'unsaved_at': DateTime.now().toIso8601String(),
+        });
+
+        return true;
+      }
 
       await _savedJobsCollection.deleteOne({
         'user_id': userId,
         'job_id': jobId,
       });
 
+      await OfflineService.removeCachedSavedJob(
+        userId: userId,
+        jobId: jobId,
+      );
+
       return true;
     } catch (e) {
       print('Gagal menghapus lowongan tersimpan: $e');
-      return false;
+
+      try {
+        await OfflineService.removeCachedSavedJob(
+          userId: userId,
+          jobId: jobId,
+        );
+
+        await OfflineService.addToSyncQueue('unsave_job', {
+          'user_id': userId,
+          'job_id': jobId,
+          'unsaved_at': DateTime.now().toIso8601String(),
+        });
+
+        return true;
+      } catch (fallbackError) {
+        print('❌ unsaveJob fallback error: $fallbackError');
+        return false;
+      }
     }
   }
 
@@ -677,9 +799,21 @@ class MongoService {
     required String jobId,
   }) async {
     try {
-      await ensureConnected();
-
       if (userId.isEmpty || jobId.isEmpty) return false;
+
+      final hasConnection = await connectivityService.checkConnection();
+
+      if (!hasConnection) {
+        print('📱 isJobSaved: Offline. Checking cache.');
+        return OfflineService.getCachedSavedJobIds(userId).contains(jobId);
+      }
+
+      final isLive = await ensureConnected();
+
+      if (!isLive) {
+        print('⚠️ isJobSaved: DB not live. Checking cache.');
+        return OfflineService.getCachedSavedJobIds(userId).contains(jobId);
+      }
 
       final savedJob = await _savedJobsCollection.findOne({
         'user_id': userId,
@@ -689,7 +823,7 @@ class MongoService {
       return savedJob != null;
     } catch (e) {
       print('Gagal mengecek lowongan tersimpan: $e');
-      return false;
+      return OfflineService.getCachedSavedJobIds(userId).contains(jobId);
     }
   }
 
@@ -697,14 +831,21 @@ class MongoService {
     required String userId,
   }) async {
     try {
+      if (userId.isEmpty) return <String>{};
+
       final hasConnection = await connectivityService.checkConnection();
+
       if (!hasConnection) {
-        return <String>{};
+        print('📱 getSavedJobIds: Offline. Using cached saved job ids.');
+        return OfflineService.getCachedSavedJobIds(userId);
       }
 
-      await ensureConnected();
+      final isLive = await ensureConnected();
 
-      if (userId.isEmpty) return <String>{};
+      if (!isLive) {
+        print('⚠️ getSavedJobIds: DB not live. Using cached saved job ids.');
+        return OfflineService.getCachedSavedJobIds(userId);
+      }
 
       final savedJobs = await _savedJobsCollection
           .find(
@@ -712,13 +853,15 @@ class MongoService {
           )
           .toList();
 
-      return savedJobs
+      final ids = savedJobs
           .map((item) => item['job_id']?.toString() ?? '')
           .where((id) => id.isNotEmpty)
           .toSet();
+
+      return ids;
     } catch (e) {
       print('Gagal mengambil id lowongan tersimpan: $e');
-      return <String>{};
+      return OfflineService.getCachedSavedJobIds(userId);
     }
   }
 
@@ -726,9 +869,21 @@ class MongoService {
     required String userId,
   }) async {
     try {
-      await ensureConnected();
-
       if (userId.isEmpty) return [];
+
+      final hasConnection = await connectivityService.checkConnection();
+
+      if (!hasConnection) {
+        print('📱 Saved Jobs: Offline. Using cache.');
+        return OfflineService.getCachedSavedJobs(userId);
+      }
+
+      final isLive = await ensureConnected();
+
+      if (!isLive) {
+        print('⚠️ Saved Jobs: DB not live. Using cache.');
+        return OfflineService.getCachedSavedJobs(userId);
+      }
 
       final savedJobs = await _savedJobsCollection
           .find(
@@ -739,7 +894,10 @@ class MongoService {
           )
           .toList();
 
-      if (savedJobs.isEmpty) return [];
+      if (savedJobs.isEmpty) {
+        await OfflineService.cacheSavedJobs(userId, []);
+        return [];
+      }
 
       final savedAtByJobId = <String, dynamic>{};
       final savedJobIds = <String>[];
@@ -753,7 +911,10 @@ class MongoService {
         }
       }
 
-      if (savedJobIds.isEmpty) return [];
+      if (savedJobIds.isEmpty) {
+        await OfflineService.cacheSavedJobs(userId, []);
+        return [];
+      }
 
       final activeJobs = await _jobVacanciesCollection
           .find(
@@ -779,10 +940,12 @@ class MongoService {
         return aIndex.compareTo(bIndex);
       });
 
+      await OfflineService.cacheSavedJobs(userId, result);
+
       return result;
     } catch (e) {
       print('Gagal mengambil lowongan tersimpan: $e');
-      return [];
+      return OfflineService.getCachedSavedJobs(userId);
     }
   }
 
