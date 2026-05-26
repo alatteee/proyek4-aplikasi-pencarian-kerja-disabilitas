@@ -1917,4 +1917,44 @@ class MongoService {
       return OfflineService.getCachedJobs();
     }
   }
+
+  // ⚡ PERF: Pagination support untuk load jobs bertahap
+  static Future<List<Map<String, dynamic>>> getPublishedJobsPaginated({
+    int limit = 15,
+    int skip = 0,
+  }) async {
+    try {
+      final hasConnection = await connectivityService.checkConnection();
+      
+      if (hasConnection) {
+        try {
+          final isLive = await ensureConnected();
+          if (!isLive) {
+            return OfflineService.getCachedJobs();
+          }
+
+          // ✅ Fetch all jobs then slice in Dart
+          final allJobs = await _jobVacanciesCollection
+              .find(
+                where.eq('status', 'active').sortBy('created_at', descending: true),
+              )
+              .toList();
+
+          final jobs = allJobs.cast<Map<String, dynamic>>();
+          final startIndex = skip;
+          final endIndex = (skip + limit).clamp(0, jobs.length);
+
+          return jobs.sublist(startIndex, endIndex);
+        } catch (e) {
+          print('❌ Paginated fetch error: $e');
+          return OfflineService.getCachedJobs();
+        }
+      } else {
+        return OfflineService.getCachedJobs();
+      }
+    } catch (e) {
+      print('❌ Pagination error: $e');
+      return OfflineService.getCachedJobs();
+    }
+  }
 }

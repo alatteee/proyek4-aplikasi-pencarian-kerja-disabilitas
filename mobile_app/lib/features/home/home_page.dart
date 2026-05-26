@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'dart:convert';
+import 'dart:async';
 import '../../core/constants/app_colors.dart';
 import '../../services/mongo_service.dart';
 import '../../services/offline_service.dart';
@@ -44,6 +45,7 @@ class _HomePageState extends State<HomePage> {
 
   String selectedCategory = 'Semua';
   String searchQuery = '';
+  Timer? _searchDebounceTimer;
 
   final TextEditingController _searchController = TextEditingController();
 
@@ -66,6 +68,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void dispose() {
     _searchController.dispose();
+    _searchDebounceTimer?.cancel();
     super.dispose();
   }
 
@@ -138,20 +141,33 @@ class _HomePageState extends State<HomePage> {
       });
     }
 
-    final data = await MongoService.getJobVacancies();
-    final savedIds = await MongoService.getSavedJobIds(
-      userId: _currentUserId,
-    );
+    try {
+      // ⚡ PERF: Jalankan kedua query PARALLEL (bukan sequential)
+      print('⚡ PERF: Loading jobs and saved IDs in parallel...');
+      final results = await Future.wait([
+        MongoService.getJobVacancies(),
+        MongoService.getSavedJobIds(userId: _currentUserId),
+      ]);
 
-    if (!mounted) return;
+      final data = results[0] as List<Map<String, dynamic>>;
+      final savedIds = results[1] as Set<String>;
 
-    setState(() {
-      jobs = data;
-      savedJobIds = savedIds;
-      isLoading = false;
-    });
+      if (!mounted) return;
 
-    applyFilters();
+      setState(() {
+        jobs = data;
+        savedJobIds = savedIds;
+        isLoading = false;
+      });
+      print('✅ Jobs loaded: ${jobs.length} total');
+
+      applyFilters();
+    } catch (e) {
+      print('❌ Error fetching jobs: $e');
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    }
   }
 
   /// Handles pull-to-refresh logic based on connectivity.
@@ -724,8 +740,14 @@ class _HomePageState extends State<HomePage> {
                   color: theme.textTheme.bodyLarge?.color,
                 ),
                 onChanged: (value) {
-                  searchQuery = value;
-                  applyFilters();
+                  // ⚡ PERF: Debounce search input (delay 500ms)
+                  _searchDebounceTimer?.cancel();
+                  _searchDebounceTimer = Timer(const Duration(milliseconds: 500), () {
+                    if (mounted) {
+                      setState(() => searchQuery = value);
+                      applyFilters();
+                    }
+                  });
                 },
                 decoration: InputDecoration(
                   hintText: 'Cari Lowongan Pekerjaan...',
@@ -1033,7 +1055,7 @@ class _JobCard extends StatelessWidget {
       return placeholder();
     }
 
-    // Untuk data stress test: job_photo berupa URL https://picsum.photos/...
+    // ⚡ PERF: Cache network images to avoid reloads
     if (photoText.startsWith('http://') || photoText.startsWith('https://')) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(8),
@@ -1042,6 +1064,8 @@ class _JobCard extends StatelessWidget {
           width: 48,
           height: 48,
           fit: BoxFit.cover,
+          cacheWidth: 96, // ⚡ Cache at 2x resolution
+          cacheHeight: 96,
           errorBuilder: (context, error, stackTrace) => placeholder(),
         ),
       );
