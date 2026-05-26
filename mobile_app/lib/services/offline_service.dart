@@ -296,6 +296,19 @@ class OfflineService {
     }
   }
 
+  static Future<void> cachePendingApplication(
+    Map<String, dynamic> applicationData,
+  ) async {
+    try {
+      final box = Hive.box(applicationsBoxName);
+      final data = _sanitizeForHive(applicationData);
+      await box.add(data);
+      print('✅ Pending application cached successfully.');
+    } catch (e) {
+      print('❌ Error caching pending application: $e');
+    }
+  }
+
   // Helper untuk membersihkan data dari tipe data MongoDB (ObjectId) yang tidak didukung Hive
   static Map<String, dynamic> _sanitizeForHive(Map<String, dynamic> rawData) {
     final Map<String, dynamic> sanitized = {};

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import '../../core/constants/app_colors.dart';
 import '../auth/login_view.dart';
 import 'profile_detail_view.dart';

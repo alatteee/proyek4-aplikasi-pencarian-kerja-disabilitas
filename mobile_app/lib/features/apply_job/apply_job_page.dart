@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import '../../core/constants/app_colors.dart';
+import '../../services/connectivity_service.dart';
 import '../../services/mongo_service.dart';
+import '../../services/offline_service.dart';
 import 'application_success_page.dart';
 
 class ApplyJobPage extends StatefulWidget {
@@ -148,6 +150,55 @@ class _ApplyJobPageState extends State<ApplyJobPage> {
       _isSubmitting = true;
     });
 
+    final isOnline = await connectivityService.checkConnection();
+
+    final applicationData = {
+      'user_id': _userId,
+      'job_id': _jobId,
+      'job_title': _jobTitle,
+      'company_name': _companyName,
+      'full_name': _fullName,
+      'email': _email,
+      'phone': _phone,
+      'message': message,
+      'status': 'pending',
+      'job_photo': widget.job['job_photo'],
+      'sync_status': isOnline ? 'synced' : 'pending',
+      'created_at': DateTime.now().toUtc(),
+    };
+
+    if (!isOnline) {
+      await _submitOffline(applicationData);
+      return;
+    }
+
+    await _submitOnline(applicationData);
+  }
+
+  Future<void> _submitOffline(Map<String, dynamic> applicationData) async {
+    await OfflineService.cachePendingApplication(applicationData);
+    await OfflineService.addToSyncQueue('submit_application', applicationData);
+
+    if (!mounted) return;
+
+    setState(() {
+      _isSubmitting = false;
+    });
+
+    _showCustomSnackBar(
+      'Anda sedang offline. Lamaran akan dikirim saat kembali online.',
+      icon: Icons.cloud_queue,
+    );
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ApplicationSuccessPage(currentUser: widget.currentUser),
+      ),
+    );
+  }
+
+  Future<void> _submitOnline(Map<String, dynamic> applicationData) async {
     final alreadyApplied = await MongoService.hasAppliedJob(
       userId: _userId,
       jobId: _jobId,
@@ -167,20 +218,7 @@ class _ApplyJobPageState extends State<ApplyJobPage> {
     }
 
     final success = await MongoService.submitJobApplication(
-      applicationData: {
-        'user_id': _userId,
-        'job_id': _jobId,
-        'job_title': _jobTitle,
-        'company_name': _companyName,
-        'full_name': _fullName,
-        'email': _email,
-        'phone': _phone,
-        'message': message,
-        'status': 'pending',
-        'job_photo': widget.job['job_photo'], // Tambahkan ini agar foto tersimpan di koleksi lamaran
-        'sync_status': 'synced',
-        'created_at': DateTime.now().toUtc(),
-      },
+      applicationData: applicationData,
     );
 
     if (!mounted) return;
@@ -251,7 +289,7 @@ class _ApplyJobPageState extends State<ApplyJobPage> {
                       company: _companyName,
                       location: _location,
                       jobType: _jobType,
-                      jobPhoto: widget.job['job_photo'], // Tambahkan ini
+                      jobPhoto: widget.job['job_photo'],
                     ),
                     const SizedBox(height: 22),
                     Text(
@@ -394,14 +432,14 @@ class _JobSummaryCard extends StatelessWidget {
   final String company;
   final String location;
   final String jobType;
-  final String? jobPhoto; // Tambahkan ini
+  final String? jobPhoto;
 
   const _JobSummaryCard({
     required this.title,
     required this.company,
     required this.location,
     required this.jobType,
-    this.jobPhoto, // Tambahkan ini
+    this.jobPhoto,
   });
 
   @override

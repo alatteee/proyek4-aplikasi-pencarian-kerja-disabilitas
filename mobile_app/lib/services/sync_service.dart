@@ -184,7 +184,7 @@ class SyncService {
     required String action,
     required Map<String, dynamic> data,
   }) async {
-    if (action == 'apply_job') {
+    if (action == 'submit_application') {
       return await MongoService.submitJobApplicationOnlineOnly(data);
     }
 

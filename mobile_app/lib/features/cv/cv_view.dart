@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
+import '../../services/connectivity_service.dart';
+import '../../services/offline_service.dart';
 import '../profile/accessibility_settings_view.dart';
 import 'cv_controller.dart';
 import 'cv_form_view.dart';
@@ -17,22 +19,51 @@ class CvView extends StatefulWidget {
 class _CvViewState extends State<CvView> {
   Map<String, dynamic>? cvData;
   bool isLoading = true;
+  late ConnectivityService connectivityService;
 
   @override
   void initState() {
     super.initState();
+    connectivityService = ConnectivityService();
     _fetchCv();
   }
 
   Future<void> _fetchCv() async {
     setState(() => isLoading = true);
-    final data = await CvController.getCvByUserId(widget.currentUser['_id']);
-    if (mounted) {
-      setState(() {
-        cvData = data;
-        isLoading = false;
-      });
+    
+    try {
+      final isOnline = await connectivityService.checkConnection();
+      final userId = widget.currentUser['_id']?.toString() ?? widget.currentUser['_id'];
+      
+      final data = await CvController.getCvByUserId(userId);
+      
+      if (mounted) {
+        setState(() {
+          cvData = data;
+          isLoading = false;
+        });
+        
+        // Tampilkan notifikasi jika offline
+        if (!isOnline && data != null) {
+          _showOfflineSnackbar();
+        }
+      }
+    } catch (e) {
+      print('❌ Error fetching CV: $e');
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
     }
+  }
+
+  void _showOfflineSnackbar() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Data ditampilkan dari cache (offline)'),
+        backgroundColor: Colors.orange.withOpacity(0.8),
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 
   @override

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../core/constants/app_colors.dart';
 import 'profile_controller.dart';
 
 class AccountSettingsView extends StatefulWidget {

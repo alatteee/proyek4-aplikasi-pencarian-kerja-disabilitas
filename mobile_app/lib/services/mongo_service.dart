@@ -1231,9 +1231,6 @@ class MongoService {
           )
           .toList();
 
-      // Update cache
-      await OfflineService.cacheApplications(applications);
-
       // Secara otomatis melengkapi job_photo jika belum ada di data lamaran
       for (var app in applications) {
         if (app['job_photo'] == null && app['job_id'] != null) {
@@ -1245,7 +1242,9 @@ class MongoService {
       }
 
       final castedApps = applications.cast<Map<String, dynamic>>();
-      OfflineService.cacheApplications(castedApps);
+      
+      // Cache only once after all modifications are done
+      await OfflineService.cacheApplications(castedApps);
 
       return castedApps;
     } catch (e) {

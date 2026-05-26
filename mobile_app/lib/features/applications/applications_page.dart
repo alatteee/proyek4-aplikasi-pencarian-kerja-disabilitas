@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import '../../core/constants/app_colors.dart';
+import '../../services/connectivity_service.dart';
 import '../../services/mongo_service.dart';
+import '../../services/offline_service.dart';
 import '../profile/accessibility_settings_view.dart';
 
 class ApplicationsPage extends StatefulWidget {
@@ -37,17 +39,61 @@ class _ApplicationsPageState extends State<ApplicationsPage> {
   }
 
   Future<void> _loadApplications() async {
+    if (!mounted) return;
+
+    // Set loading state only if it's the initial load.
     if (_applications.isEmpty) {
       setState(() => _isLoading = true);
     }
-    final data = await MongoService.getUserApplications(userId: _currentUserId);
 
-    if (!mounted) return;
+    final isOnline = await connectivityService.checkConnection();
+    List<Map<String, dynamic>> data;
 
-    setState(() {
-      _applications = data;
-      _isLoading = false;
-    });
+    try {
+      if (isOnline) {
+        print('🔄 Loading applications from server...');
+        data = await MongoService.getUserApplications(userId: _currentUserId);
+        // MongoService already caches the data, no need to cache again
+      } else {
+        print('📱 Loading applications from cache...');
+        data = OfflineService.getCachedApplications();
+        if (mounted) {
+          _showOfflineSnackbar();
+        }
+      }
+    } catch (e) {
+      print('❌ Error loading applications, falling back to cache: $e');
+      data = OfflineService.getCachedApplications();
+    }
+
+    // Ensure the UI is updated with the new data, replacing the old list.
+    if (mounted) {
+      setState(() {
+        _applications = data;
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _showOfflineSnackbar() {
+    final isHighContrast = AccessibilityController.highContrastNotifier.value;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Anda sedang offline. Menampilkan data dari cache.',
+          style: TextStyle(
+            color: isHighContrast ? Colors.black : Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        backgroundColor: isHighContrast ? Colors.yellow : Colors.grey.shade800,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 
   String _statusToFilter(String? status) {
