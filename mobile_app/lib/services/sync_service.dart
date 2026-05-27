@@ -235,12 +235,23 @@ class SyncService {
 
     if (action == 'update_company_profile') {
       final companyId = data['companyId']?.toString() ?? '';
+      final userId = data['userId']?.toString() ?? '';
       final compData = Map<String, dynamic>.from(data['data']);
 
-      return await MongoService.updateCompanyProfile(
+      // updateCompanyProfile returns bool? — null means email conflict.
+      // Treat null as false so the item stays in queue.
+      final result = await MongoService.updateCompanyProfile(
         companyId: companyId,
+        userId: userId.isNotEmpty ? userId : null,
         data: compData,
       );
+
+      if (result == null) {
+        print('⚠️ SyncService: update_company_profile ditolak — email konflik.');
+        return false;
+      }
+
+      return result;
     }
 
     print('⚠️ Unknown sync action: $action');

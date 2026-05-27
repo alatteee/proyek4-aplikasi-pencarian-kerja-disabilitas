@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import '../../services/mongo_service.dart';
+import '../../services/offline_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
 
 class CompanyEditProfilePage extends StatefulWidget {
   final Map<String, dynamic> companyData;
+  // userData dibutuhkan agar user_id tersedia untuk update collection users
+  final Map<String, dynamic> userData;
 
   const CompanyEditProfilePage({
     super.key,
     required this.companyData,
+    required this.userData,
   });
 
   @override
@@ -108,20 +112,32 @@ class _CompanyEditProfilePageState extends State<CompanyEditProfilePage> {
       return;
     }
 
+    // Ambil user_id dari userData (bukan companyData) agar lebih andal
+    final userId = widget.userData['_id']?.toString() ?? '';
+    if (userId.isEmpty) {
+      _showSnackBar('User ID tidak valid');
+      return;
+    }
+
     setState(() {
       isSaving = true;
     });
 
+    final newEmail = _emailController.text.trim();
+
+    // Kirim user_id di dalam data agar updateCompanyProfile bisa update collection users
     final success = await MongoService.updateCompanyProfile(
       companyId: companyId,
+      userId: userId,
       data: {
         'company_name': _companyNameController.text.trim(),
         'field': _fieldController.text.trim(),
-        'email': _emailController.text.trim(),
+        'email': newEmail,
         'phone': _phoneController.text.trim(),
         'address': _addressController.text.trim(),
         'description': _descriptionController.text.trim(),
         'profile_photo': _profilePhotoBase64,
+        'user_id': userId,
       },
     );
 
@@ -131,9 +147,18 @@ class _CompanyEditProfilePageState extends State<CompanyEditProfilePage> {
       isSaving = false;
     });
 
-    if (success) {
+    if (success == true) {
+      // Update cached logged-in user agar email baru langsung tersedia
+      final cachedUser = OfflineService.getLoggedInUser();
+      if (cachedUser != null) {
+        cachedUser['email'] = newEmail;
+        await OfflineService.setLoggedInUser(cachedUser);
+      }
       _showSnackBar('Profil perusahaan berhasil diperbarui');
       Navigator.pop(context, true);
+    } else if (success == null) {
+      // null berarti email sudah dipakai user lain
+      _showSnackBar('Email sudah digunakan akun lain. Gunakan email berbeda.');
     } else {
       _showSnackBar('Gagal memperbarui profil perusahaan');
     }

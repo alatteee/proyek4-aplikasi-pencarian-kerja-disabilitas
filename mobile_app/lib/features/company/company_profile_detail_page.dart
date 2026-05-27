@@ -5,10 +5,12 @@ import 'dart:convert';
 
 class CompanyProfileDetailPage extends StatefulWidget {
   final Map<String, dynamic> companyData;
+  final Map<String, dynamic> userData;
 
   const CompanyProfileDetailPage({
     super.key,
     required this.companyData,
+    required this.userData,
   });
 
   @override
@@ -59,6 +61,7 @@ class _CompanyProfileDetailPageState extends State<CompanyProfileDetailPage> {
       MaterialPageRoute(
         builder: (_) => CompanyEditProfilePage(
           companyData: companyData,
+          userData: widget.userData,
         ),
       ),
     );
@@ -291,8 +294,10 @@ class _CompanyProfileDetailPageState extends State<CompanyProfileDetailPage> {
             alignment: Alignment.centerLeft,
             child: Text(
               value,
-              maxLines: minHeight > 70 ? 4 : 1,
-              overflow: TextOverflow.ellipsis,
+              maxLines: minHeight > 70 ? null : 1,
+              overflow: minHeight > 70
+                  ? TextOverflow.visible
+                  : TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: 13.5,
                 fontWeight: FontWeight.w800,
