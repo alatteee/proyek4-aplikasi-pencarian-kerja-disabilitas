@@ -1240,22 +1240,34 @@ class MongoService {
     }
   }
 
-  static Future<bool> updateCompanyProfile({
+  /// Update profil company di collection `companies` DAN email di collection `users`.
+  ///
+  /// Return value:
+  ///   true  → berhasil (atau offline/DB-not-live → di-queue)
+  ///   false → gagal karena error teknis
+  ///   null  → email baru sudah dipakai user lain (konflik — jangan simpan)
+  static Future<bool?> updateCompanyProfile({
     required String companyId,
     required Map<String, dynamic> data,
+    String? userId,
   }) async {
+    // Ambil userId dari parameter eksplisit atau dari data map
+    final String effectiveUserId =
+        (userId?.isNotEmpty == true ? userId : data['user_id']?.toString()) ?? '';
+
+    final String newEmail = data['email']?.toString().trim() ?? '';
+
     try {
       final hasConnection = await connectivityService.checkConnection();
       if (!hasConnection) {
         print('📱 Company Profile Update: Offline. Queueing sync.');
-        // Update local cache
-        if (data['user_id'] != null) {
-          await OfflineService.cacheCompanyProfile(data['user_id'].toString(), data);
+        if (effectiveUserId.isNotEmpty) {
+          await OfflineService.cacheCompanyProfile(effectiveUserId, data);
         }
-        // Sanitized data ada di addToSyncQueue sekarang, tapi tetap queue yang clean
         final dataToQueue = _sanitizeMapForSync(data);
         await OfflineService.addToSyncQueue('update_company_profile', {
           'companyId': companyId,
+          'userId': effectiveUserId,
           'data': dataToQueue,
         });
         return true;
@@ -1263,16 +1275,16 @@ class MongoService {
 
       await ensureConnected();
 
-      // Verify koneksi sebelum operasi DB
       final isLive = await verifyConnected();
       if (!isLive) {
         print('⚠️ Company Profile Update: DB not live. Queueing sync.');
-        if (data['user_id'] != null) {
-          await OfflineService.cacheCompanyProfile(data['user_id'].toString(), data);
+        if (effectiveUserId.isNotEmpty) {
+          await OfflineService.cacheCompanyProfile(effectiveUserId, data);
         }
         final dataToQueue = _sanitizeMapForSync(data);
         await OfflineService.addToSyncQueue('update_company_profile', {
           'companyId': companyId,
+          'userId': effectiveUserId,
           'data': dataToQueue,
         });
         return true;
@@ -1280,22 +1292,102 @@ class MongoService {
 
       if (companyId.isEmpty) return false;
 
+      // --- Validasi email unik di collection users ---
+      // Cek apakah email sudah dipakai user LAIN (bukan diri sendiri)
+      if (newEmail.isNotEmpty && effectiveUserId.isNotEmpty) {
+        final existingUser = await users.findOne(where.eq('email', newEmail));
+        if (existingUser != null) {
+          final existingId = getMongoId(existingUser['_id']);
+          // Bandingkan hex-nya saja agar ObjectId vs String tidak menyebabkan false-positive
+          final currentHex = _tryParseObjectId(effectiveUserId)?.oid ??
+              effectiveUserId.replaceAll(RegExp(r'[^0-9a-fA-F]'), '');
+          if (existingId != currentHex) {
+            print('⚠️ updateCompanyProfile: email $newEmail sudah dipakai user lain ($existingId)');
+            return null; // sinyal konflik email
+          }
+        }
+      }
+
+      // --- Update collection companies ---
+      ObjectId? companyObjId;
+      try {
+        companyObjId = ObjectId.fromHexString(companyId);
+      } catch (_) {
+        print('⚠️ updateCompanyProfile: companyId bukan hex ObjectId, mencoba string query');
+      }
+
+      final companyQuery = companyObjId != null
+          ? where.id(companyObjId)
+          : where.eq('_id', companyId);
+
       await _companiesCollection.updateOne(
-        where.id(ObjectId.fromHexString(companyId)),
+        companyQuery,
         modify
             .set('company_name', data['company_name'])
             .set('description', data['description'])
             .set('address', data['address'])
-            .set('email', data['email'])
+            .set('email', newEmail.isNotEmpty ? newEmail : data['email'])
             .set('phone', data['phone'])
             .set('field', data['field'] ?? '')
             .set('profile_photo', data['profile_photo'])
             .set('updated_at', DateTime.now().toUtc()),
       );
 
-      // Update cache
-      if (data['user_id'] != null) {
-        await OfflineService.cacheCompanyProfile(data['user_id'].toString(), data);
+      // --- Update email & phone di collection users ---
+      if (effectiveUserId.isNotEmpty && newEmail.isNotEmpty) {
+        bool userUpdated = false;
+
+        // Coba update dengan berbagai format ID
+        for (final candidate in _idCandidates(effectiveUserId)) {
+          try {
+            final updateResult = await users.updateOne(
+              where.id(candidate),
+              modify
+                  .set('email', newEmail)
+                  .set('phone', data['phone'] ?? '')
+                  .set('updated_at', DateTime.now().toUtc()),
+            );
+            // mongo_dart: nModified > 0 atau writeResult sukses
+            final nModified = updateResult.nModified ?? 0;
+            final ok = updateResult.ok ?? 0.0;
+            if (nModified > 0 || ok == 1.0) {
+              userUpdated = true;
+              print('✅ updateCompanyProfile: email users diperbarui (userId=$effectiveUserId)');
+              break;
+            }
+          } catch (e) {
+            print('⚠️ updateCompanyProfile: gagal update users dengan candidate $candidate: $e');
+          }
+        }
+
+        if (!userUpdated) {
+          // Fallback: cari user berdasarkan userId string tanpa ObjectId
+          try {
+            final updateResult = await users.updateOne(
+              where.eq('_id', effectiveUserId),
+              modify
+                  .set('email', newEmail)
+                  .set('phone', data['phone'] ?? '')
+                  .set('updated_at', DateTime.now().toUtc()),
+            );
+            final nModified = updateResult.nModified ?? 0;
+            if (nModified > 0) {
+              userUpdated = true;
+              print('✅ updateCompanyProfile: email users diperbarui (string fallback)');
+            }
+          } catch (e) {
+            print('⚠️ updateCompanyProfile: fallback update users gagal: $e');
+          }
+        }
+
+        if (!userUpdated) {
+          print('❌ updateCompanyProfile: WARNING - email di collection users TIDAK berhasil diperbarui!');
+        }
+      }
+
+      // --- Update Hive cache ---
+      if (effectiveUserId.isNotEmpty) {
+        await OfflineService.cacheCompanyProfile(effectiveUserId, data);
       }
 
       return true;
@@ -1303,11 +1395,12 @@ class MongoService {
       print('❌ Error updateCompanyProfile: $e');
       // Fallback: cache dan queue untuk sync nanti
       try {
-        if (data['user_id'] != null) {
-          await OfflineService.cacheCompanyProfile(data['user_id'].toString(), data);
+        if (effectiveUserId.isNotEmpty) {
+          await OfflineService.cacheCompanyProfile(effectiveUserId, data);
           final dataToQueue = _sanitizeMapForSync(data);
           await OfflineService.addToSyncQueue('update_company_profile', {
             'companyId': companyId,
+            'userId': effectiveUserId,
             'data': dataToQueue,
           });
           return true;

@@ -69,6 +69,7 @@ class _CompanyProfilePageState extends State<CompanyProfilePage> {
       MaterialPageRoute(
         builder: (_) => CompanyProfileDetailPage(
           companyData: companyData!,
+          userData: widget.userData,
         ),
       ),
     );
